@@ -2,7 +2,7 @@
   {
     "id": "emp-001",
     "name": "송동현",
-    "email": "song@example.com",
+    "email": "dh81.song@samsung.com",
     "pin": "0912",
     "driverIds": [
       "drv-001"
@@ -12,7 +12,7 @@
   {
     "id": "emp-002",
     "name": "김영식",
-    "email": "kim@example.com",
+    "email": "ys0212.kim@samsung.com",
     "pin": "7788",
     "driverIds": [
       "drv-002"

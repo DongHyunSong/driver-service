@@ -27,7 +27,8 @@ router.post('/login', (req, res) => {
         id: employer.id,
         name: employer.name,
         email: employer.email,
-        driverIds: employer.driverIds
+        driverIds: employer.driverIds,
+        isAdmin: employer.isAdmin
       }
     });
   }

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const QRCode = require('qrcode');
 const { readJSON, writeJSON, generateId, getDayType, getPaySettings } = require('../utils/dataStore');
+const { sendAttendanceEmail } = require('../utils/email');
 
 // ── 헬퍼: clockIn/clockOut으로 hoursWorked, otHours 계산 ──────────────
 function calcHours(clockIn, clockOut) {
@@ -77,6 +78,11 @@ router.post('/checkin', (req, res) => {
     records[idx].worked = true;
     records[idx].dayType = dayType;
     writeJSON('attendance.json', records);
+
+    const employers = readJSON('employers.json');
+    const employer = employers.find(e => e.id === driver.employerId);
+    if (employer) sendAttendanceEmail(employer, driver, records[idx], 'checkin');
+
     return res.json({ success: true, status: 'checked_in', record: records[idx] });
   }
 
@@ -96,6 +102,11 @@ router.post('/checkin', (req, res) => {
   };
   records.push(newRecord);
   writeJSON('attendance.json', records);
+
+  const employers = readJSON('employers.json');
+  const employer = employers.find(e => e.id === driver.employerId);
+  if (employer) sendAttendanceEmail(employer, driver, newRecord, 'checkin');
+
   res.status(201).json({ success: true, status: 'checked_in', record: newRecord });
 });
 
@@ -126,6 +137,15 @@ router.post('/checkout', (req, res) => {
   records[idx].updatedAt = clockOut;
 
   writeJSON('attendance.json', records);
+
+  const drivers = readJSON('drivers.json');
+  const driver = drivers.find(d => d.id === driverId);
+  if (driver) {
+    const employers = readJSON('employers.json');
+    const employer = employers.find(e => e.id === driver.employerId);
+    if (employer) sendAttendanceEmail(employer, driver, records[idx], 'checkout');
+  }
+
   res.json({ success: true, status: 'checked_out', record: records[idx] });
 });
 
@@ -205,6 +225,15 @@ router.post('/', (req, res) => {
 
   records.push(newRecord);
   writeJSON('attendance.json', records);
+
+  const drivers = readJSON('drivers.json');
+  const driver = drivers.find(d => d.id === driverId);
+  if (driver) {
+    const employers = readJSON('employers.json');
+    const employer = employers.find(e => e.id === driver.employerId);
+    if (employer) sendAttendanceEmail(employer, driver, newRecord, 'manual');
+  }
+
   res.status(201).json(newRecord);
 });
 
@@ -237,6 +266,15 @@ router.put('/:id', (req, res) => {
 
   records[index].updatedAt = new Date().toISOString();
   writeJSON('attendance.json', records);
+
+  const drivers = readJSON('drivers.json');
+  const driver = drivers.find(d => d.id === records[index].driverId);
+  if (driver) {
+    const employers = readJSON('employers.json');
+    const employer = employers.find(e => e.id === driver.employerId);
+    if (employer) sendAttendanceEmail(employer, driver, records[index], 'manual');
+  }
+
   res.json(records[index]);
 });
 
