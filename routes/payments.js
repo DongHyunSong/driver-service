@@ -160,4 +160,19 @@ router.post('/confirm', (req, res) => {
   res.status(201).json(payment);
 });
 
+/**
+ * DELETE /api/payments/:id
+ * 급여 지급 취소 (삭제)
+ */
+router.delete('/:id', (req, res) => {
+  let payments = readJSON('payments.json');
+  const index = payments.findIndex(p => p.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Payment record not found' });
+  }
+  payments.splice(index, 1);
+  writeJSON('payments.json', payments);
+  res.json({ success: true });
+});
+
 module.exports = router;

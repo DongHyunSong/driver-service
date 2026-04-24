@@ -498,6 +498,9 @@ async function renderSalaryCalc() {
         <div class="card mt-md text-center">
           <span class="badge badge-success">지급 완료</span>
           <div class="text-muted mt-sm" style="font-size:var(--font-xs)">${new Date(paidPayment.paidAt).toLocaleString('ko-KR')}</div>
+          ${AppState.currentUser.isAdmin ? `
+            <button class="btn btn-outline btn-sm text-error mt-md" onclick="cancelPayment('${paidPayment.id}')">지급 취소 (수정 모드 전환)</button>
+          ` : ''}
         </div>`}
     </div>`;
 }
@@ -513,6 +516,15 @@ async function confirmPayment() {
     showToast('급여가 지급 확정되었습니다!', 'success');
     renderSalaryCalc();
   } catch (e) { showToast('급여 확정 실패: ' + e.message, 'error'); }
+}
+
+async function cancelPayment(paymentId) {
+  if (!confirm('정말 지급을 취소하고 수정 모드로 돌아가시겠습니까?')) return;
+  try {
+    await api(`/payments/${paymentId}`, { method: 'DELETE' });
+    showToast('지급이 취소되었습니다. 수정 모드로 돌아갑니다.', 'success');
+    renderSalaryCalc();
+  } catch (e) { showToast('취소 실패: ' + e.message, 'error'); }
 }
 
 // ========================
