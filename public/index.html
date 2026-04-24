@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="필리핀 운전기사 급여 관리 서비스 - Driver Payment Management">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Driver Payment</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css?v=3">
+  <style>
+    /* ── Attendance Table ── */
+    .att-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius-lg); border: 1px solid var(--border); margin-bottom: var(--space-md); }
+    .att-table { width: 100%; border-collapse: collapse; font-size: var(--font-xs); min-width: 580px; }
+    .att-table th { background: var(--bg-input); color: var(--text-muted); font-weight: 600; padding: 10px 12px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; z-index: 1; }
+    .att-table td { padding: 9px 12px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; color: var(--text-primary); }
+    .att-table tr:last-child td { border-bottom: none; }
+    .att-table tr:hover td { background: var(--bg-card-hover); }
+    .att-table .col-date { text-align: left; font-weight: 600; }
+    .att-table .col-holiday { color: var(--error); }
+    .att-table .col-ot { color: var(--warning); font-weight: 600; }
+    .att-table .col-total { font-weight: 700; background: rgba(99,102,241,0.06); }
+    .att-table .row-worked { }
+    .att-table .row-absent td { color: var(--text-muted); }
+    .att-table .row-holiday td { background: rgba(239,68,68,0.04); }
+    .att-table tfoot td { background: var(--bg-input); font-weight: 700; color: var(--text-primary); border-top: 2px solid var(--border-active); }
+    .view-toggle { display:flex; gap:6px; }
+    .view-toggle .btn { padding: 6px 14px; font-size: var(--font-xs); }
+    .view-toggle .btn.active { background: var(--accent-gradient); color: white; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen active">
+      <div class="login-container">
+        <div class="login-logo">
+          <div class="logo-icon">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+              <rect width="48" height="48" rx="12" fill="url(#logoGrad)"/>
+              <path d="M14 30C14 30 16 24 24 24C32 24 34 30 34 30" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="24" cy="18" r="5" stroke="white" stroke-width="2.5"/>
+              <path d="M10 34L14 30M38 34L34 30" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <defs>
+                <linearGradient id="logoGrad" x1="0" y1="0" x2="48" y2="48">
+                  <stop stop-color="#6366f1"/>
+                  <stop offset="1" stop-color="#8b5cf6"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <h1 class="login-title">Driver Payment</h1>
+          <p class="login-subtitle">급여 관리 서비스</p>
+        </div>
+
+        <div class="role-selector">
+          <button id="role-employer" class="role-btn active" onclick="selectRole('employer')">
+            <span class="role-icon">👔</span>
+            <span class="role-label">고용인</span>
+            <span class="role-desc">Employer</span>
+          </button>
+          <button id="role-driver" class="role-btn" onclick="selectRole('driver')">
+            <span class="role-icon">🚗</span>
+            <span class="role-label">Driver</span>
+            <span class="role-desc">드라이버</span>
+          </button>
+        </div>
+
+        <form id="login-form" class="login-form" onsubmit="handleLogin(event)">
+          <div class="input-group">
+            <label class="input-label" id="user-label-text">사용자 선택</label>
+            <select id="user-select" class="form-select" required>
+              <option value="" disabled selected>사용자를 선택하세요</option>
+            </select>
+          </div>
+
+          <div class="pin-input-group">
+            <label class="pin-label" id="pin-label-text">PIN 입력</label>
+            <div class="pin-dots" id="pin-dots">
+              <span class="pin-dot"></span>
+              <span class="pin-dot"></span>
+              <span class="pin-dot"></span>
+              <span class="pin-dot"></span>
+            </div>
+            <input type="password" id="pin-input" class="pin-hidden-input" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off" required>
+          </div>
+          <div id="login-error" class="login-error"></div>
+          <button type="submit" id="login-btn" class="btn btn-primary btn-lg btn-block">
+            <span>로그인</span>
+          </button>
+        </form>
+
+        <div class="login-footer">
+          <p class="login-hint">Demo PIN — 1234 (고용인) / 5678 (Driver)</p>
+          <div class="register-actions">
+            <button type="button" class="btn btn-outline btn-sm" onclick="showRegisterModal('employer')">+ 고용인 추가</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="showRegisterModal('driver')">+ 드라이버 추가</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="register-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-title">등록</h3>
+          <button class="close-btn" onclick="closeAuthModal('register-modal')">&times;</button>
+        </div>
+        <form id="register-form" onsubmit="handleRegister(event)">
+          <div id="register-fields">
+            <!-- Dynamic fields -->
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary btn-block">등록하기</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Employer Dashboard -->
+    <div id="employer-screen" class="screen">
+      <header class="app-header">
+        <div class="header-left">
+          <h2 class="header-title">대시보드</h2>
+          <span class="header-user" id="employer-name"></span>
+        </div>
+        <button class="btn-icon" onclick="handleLogout()" title="로그아웃">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </header>
+
+      <nav class="tab-nav" id="employer-tabs">
+        <button class="tab-btn active" data-tab="emp-dashboard" onclick="switchEmployerTab('emp-dashboard')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span>홈</span>
+        </button>
+        <button class="tab-btn" data-tab="emp-attendance" onclick="switchEmployerTab('emp-attendance')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span>출근</span>
+        </button>
+        <button class="tab-btn" data-tab="emp-salary" onclick="switchEmployerTab('emp-salary')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          <span>급여</span>
+        </button>
+        <button class="tab-btn" data-tab="emp-settings" onclick="switchEmployerTab('emp-settings')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <span>설정</span>
+        </button>
+      </nav>
+
+      <main class="content" id="employer-content">
+        <!-- 동적으로 렌더링 -->
+      </main>
+    </div>
+
+    <!-- Driver Dashboard -->
+    <div id="driver-screen" class="screen">
+      <header class="app-header">
+        <div class="header-left">
+          <h2 class="header-title">My Dashboard</h2>
+          <span class="header-user" id="driver-name"></span>
+        </div>
+        <button class="btn-icon" onclick="handleLogout()" title="Logout">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </header>
+
+      <nav class="tab-nav" id="driver-tabs">
+        <button class="tab-btn active" data-tab="drv-salary" onclick="switchDriverTab('drv-salary')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          <span>Salary</span>
+        </button>
+        <button class="tab-btn" data-tab="drv-attendance" onclick="switchDriverTab('drv-attendance')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span>Attendance</span>
+        </button>
+        <button class="tab-btn" data-tab="drv-payslip" onclick="switchDriverTab('drv-payslip')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span>Pay Slip</span>
+        </button>
+      </nav>
+
+      <main class="content" id="driver-content">
+        <!-- 동적으로 렌더링 -->
+      </main>
+    </div>
+  </div>
+
+  <!-- SheetJS for Excel export -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- QRCode library for client-side generation -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script src="/js/app.js?v=3"></script>
+  <script src="/js/auth.js?v=3"></script>
+  <script src="/js/employer.js?v=3"></script>
+  <script src="/js/driver.js?v=3"></script>
+</body>
+</html>

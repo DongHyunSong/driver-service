@@ -1,0 +1,22 @@
+[
+  {
+    "id": "emp-001",
+    "name": "송동현",
+    "email": "song@example.com",
+    "pin": "1234",
+    "driverIds": [
+      "drv-001"
+    ],
+    "createdAt": "2026-04-22T00:00:00Z"
+  },
+  {
+    "id": "emp-002",
+    "name": "김영식",
+    "email": "kim@example.com",
+    "pin": "1234",
+    "driverIds": [
+      "drv-002"
+    ],
+    "createdAt": "2026-04-22T00:00:00Z"
+  }
+]

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Check In / Out — Driver Payment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --card: #1a1f36;
+      --border: rgba(148,163,184,0.12);
+      --accent: #6366f1;
+      --accent2: #8b5cf6;
+      --grad: linear-gradient(135deg, #6366f1, #8b5cf6);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --success: #22c55e;
+      --success-bg: rgba(34,197,94,0.12);
+      --error: #ef4444;
+      --error-bg: rgba(239,68,68,0.12);
+      --warning: #f59e0b;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -30%;
+      left: -20%;
+      width: 140%;
+      height: 60%;
+      background: radial-gradient(ellipse at center, rgba(99,102,241,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 380px;
+      animation: fadeUp .5s ease;
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .logo-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      background: var(--grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .driver-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .driver-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--grad);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: white;
+      margin: 0 auto 16px;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+    }
+
+    .driver-name {
+      font-size: 1.375rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .driver-meta {
+      font-size: 0.8125rem;
+      color: var(--muted);
+    }
+
+    /* Status badge */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      margin: 16px 0 0;
+    }
+
+    .status-none    { background: rgba(148,163,184,0.12); color: var(--muted); }
+    .status-in      { background: var(--success-bg); color: var(--success); }
+    .status-done    { background: rgba(99,102,241,0.12); color: var(--accent); }
+
+    /* Clock display */
+    .clock-display {
+      font-size: 2.5rem;
+      font-weight: 800;
+      text-align: center;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .date-display {
+      text-align: center;
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+
+    /* Info row */
+    .info-rows {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+
+    .info-row:last-child { border-bottom: none; }
+
+    .info-label { color: var(--muted); }
+    .info-value { font-weight: 600; }
+    .info-value.success { color: var(--success); }
+    .info-value.warning { color: var(--warning); }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 14px;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-checkin {
+      background: var(--grad);
+      color: white;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+    }
+
+    .btn-checkout {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      box-shadow: 0 4px 16px rgba(34,197,94,0.3);
+    }
+
+    .btn-disabled {
+      background: rgba(148,163,184,0.1);
+      color: var(--muted);
+    }
+
+    /* Result message */
+    .result-msg {
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .result-msg.success { background: var(--success-bg); color: var(--success); display: block; }
+    .result-msg.error   { background: var(--error-bg); color: var(--error); display: block; }
+
+    .footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 24px;
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <div class="logo-title">🚗 Driver Payment</div>
+    </div>
+
+    <div id="loading" style="text-align:center; color:var(--muted); padding: 40px 0;">
+      Loading...
+    </div>
+
+    <div id="main" style="display:none">
+      <div class="clock-display" id="clock"></div>
+      <div class="date-display" id="date-display"></div>
+
+      <div class="driver-card">
+        <div class="driver-avatar" id="driver-avatar"></div>
+        <div class="driver-name" id="driver-name-el"></div>
+        <div class="driver-meta" id="driver-meta"></div>
+        <div class="status-badge" id="status-badge"></div>
+      </div>
+
+      <div class="info-rows" id="info-rows">
+        <div class="info-row">
+          <span class="info-label">Check-In</span>
+          <span class="info-value" id="info-checkin">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Check-Out</span>
+          <span class="info-value" id="info-checkout">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Hours Worked</span>
+          <span class="info-value" id="info-hours">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Day Type</span>
+          <span class="info-value" id="info-daytype">—</span>
+        </div>
+      </div>
+
+      <div class="result-msg" id="result-msg"></div>
+
+      <button class="btn btn-checkin" id="btn-checkin" onclick="doCheckIn()">
+        <span id="spin-checkin" class="spinner"></span>
+        <span>📍 Check In</span>
+      </button>
+      <button class="btn btn-checkout" id="btn-checkout" onclick="doCheckOut()" style="display:none">
+        <span id="spin-checkout" class="spinner"></span>
+        <span>✅ Check Out</span>
+      </button>
+    </div>
+
+    <div class="footer">Driver Payment &copy; 2026</div>
+  </div>
+
+  <script>
+    // URL에서 driverId 추출  /checkin/:driverId
+    const driverId = location.pathname.split('/').pop();
+    let currentStatus = 'not_checked_in';
+
+    // ── 시계 ─────────────────────────────────────────
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      const dateStr = now.toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('clock').textContent = timeStr;
+      document.getElementById('date-display').textContent = dateStr;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // ── 시간 포맷 ─────────────────────────────────────
+    function fmtTime(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+
+    // ── 상태 렌더링 ───────────────────────────────────
+    function renderStatus(status, record) {
+      currentStatus = status;
+      const badge = document.getElementById('status-badge');
+      const btnIn  = document.getElementById('btn-checkin');
+      const btnOut = document.getElementById('btn-checkout');
+
+      document.getElementById('info-checkin').textContent  = fmtTime(record?.clockIn);
+      document.getElementById('info-checkout').textContent = fmtTime(record?.clockOut);
+      document.getElementById('info-hours').textContent    = record?.hoursWorked ? `${record.hoursWorked}h` : '—';
+      const dt = record?.dayType;
+      const dayTypeEl = document.getElementById('info-daytype');
+      if (dt === 'holiday') {
+        dayTypeEl.textContent = 'Holiday / Sunday';
+        dayTypeEl.className = 'info-value warning';
+      } else if (dt === 'weekday') {
+        dayTypeEl.textContent = 'Weekday';
+        dayTypeEl.className = 'info-value success';
+      } else {
+        dayTypeEl.textContent = '—';
+        dayTypeEl.className = 'info-value';
+      }
+
+      if (status === 'not_checked_in') {
+        badge.textContent = '● Not Checked In';
+        badge.className = 'status-badge status-none';
+        btnIn.style.display  = 'flex';
+        btnOut.style.display = 'none';
+        btnIn.disabled = false;
+      } else if (status === 'checked_in') {
+        badge.textContent = '● Checked In';
+        badge.className = 'status-badge status-in';
+        btnIn.style.display  = 'none';
+        btnOut.style.display = 'flex';
+        btnOut.disabled = false;
+      } else if (status === 'completed') {
+        badge.textContent = '✓ Completed';
+        badge.className = 'status-badge status-done';
+        btnIn.style.display  = 'none';
+        btnOut.style.display = 'none';
+      }
+    }
+
+    // ── 초기 로드 ─────────────────────────────────────
+    async function init() {
+      try {
+        // 드라이버 정보
+        const drvRes = await fetch(`/api/drivers/${driverId}`);
+        if (!drvRes.ok) throw new Error('Driver not found');
+        const drv = await drvRes.json();
+
+        document.getElementById('driver-avatar').textContent = drv.name.charAt(0).toUpperCase();
+        document.getElementById('driver-name-el').textContent = drv.name;
+        document.getElementById('driver-meta').textContent = drv.phone || '';
+
+        // 오늘 상태
+        const stRes = await fetch(`/api/attendance/status/${driverId}`);
+        const st = await stRes.json();
+
+        // 오늘 기록 가져오기
+        const today = new Date().toISOString().slice(0, 10);
+        const attRes = await fetch(`/api/attendance?driverId=${driverId}&month=${today.slice(0, 7)}`);
+        const recs = await attRes.json();
+        const todayRec = recs.find(r => r.date === today) || null;
+
+        renderStatus(st.status, todayRec);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('main').style.display    = 'block';
+      } catch (e) {
+        document.getElementById('loading').textContent = '⚠️ ' + e.message;
+      }
+    }
+
+    // ── 출근 ──────────────────────────────────────────
+    async function doCheckIn() {
+      const spin = document.getElementById('spin-checkin');
+      const btn  = document.getElementById('btn-checkin');
+      spin.style.display = 'block';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/attendance/checkin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ driverId })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showResult('success', '✅ Checked in successfully!');
+          renderStatus('checked_in', data.record);
+        } else {
+          showResult('error', '⚠️ ' + data.error);
+          btn.disabled = false;
+        }
+      } catch (e) {
+        showResult('error', '⚠️ Network error. Please retry.');
+        btn.disabled = false;
+      }
+      spin.style.display = 'none';
+    }
+
+    // ── 퇴근 ──────────────────────────────────────────
+    async function doCheckOut() {
+      const spin = document.getElementById('spin-checkout');
+      const btn  = document.getElementById('btn-checkout');
+      spin.style.display = 'block';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/attendance/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ driverId })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          const rec = data.record;
+          showResult('success', `✅ Checked out! You worked ${rec.hoursWorked}h (OT: ${rec.otHours}h)`);
+          renderStatus('completed', rec);
+        } else {
+          showResult('error', '⚠️ ' + data.error);
+          btn.disabled = false;
+        }
+      } catch (e) {
+        showResult('error', '⚠️ Network error. Please retry.');
+        btn.disabled = false;
+      }
+      spin.style.display = 'none';
+    }
+
+    function showResult(type, msg) {
+      const el = document.getElementById('result-msg');
+      el.textContent = msg;
+      el.className = `result-msg ${type}`;
+      setTimeout(() => { el.style.display = 'none'; }, 5000);
+    }
+
+    init();
+  </script>
+</body>
+</html>
