@@ -125,18 +125,18 @@ async function renderEmployerDashboard() {
 async function showQRModal(driverId, driverName) {
   AppState.selectedDriverId = driverId;
   const checkinUrl = `${window.location.origin}/checkin/${driverId}`;
+  const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(checkinUrl)}`;
   
-  // 기본 모달 틀 먼저 표시
   showModal(`${driverName}`, `
     <div style="text-align:center">
       <div id="qr-container" style="margin-bottom:16px; min-height:220px; display:flex; align-items:center; justify-content:center;">
-        <div style="color:var(--text-muted)">QR 생성 중...</div>
+        <img src="${qrApiUrl}" alt="QR Code" style="border-radius:12px; background:#fff; padding:8px; width:220px; height:220px; box-shadow: var(--shadow-md);">
       </div>
       <div class="text-muted" style="font-size:var(--font-xs);margin-bottom:16px;word-break:break-all;">${checkinUrl}</div>
       
       <div class="flex gap-sm mb-lg">
-        <a id="qr-download" href="#" download="qr-${driverName}.png" class="btn btn-primary" style="flex:1;text-decoration:none;display:none">
-          ⬇ QR 저장
+        <a href="${qrApiUrl}" download="qr-${driverName}.png" target="_blank" class="btn btn-primary" style="flex:1;text-decoration:none;">
+          ⬇ QR 보기/저장
         </a>
         <button class="btn btn-secondary" style="flex:1" onclick="copyCheckinUrl('${checkinUrl}')">
           🔗 링크 복사
@@ -154,34 +154,6 @@ async function showQRModal(driverId, driverName) {
       </div>
     </div>
   `);
-
-  // QR 코드 생성 (img 방식이 더 안정적임)
-  try {
-    if (typeof QRCode !== 'undefined') {
-      const qrDataUrl = await QRCode.toDataURL(checkinUrl, {
-        width: 220,
-        margin: 2,
-        color: { dark: '#6366f1', light: '#ffffff' }
-      });
-      
-      const container = document.getElementById('qr-container');
-      if (container) {
-        container.innerHTML = `<img src="${qrDataUrl}" alt="QR Code" style="border-radius:12px; background:#fff; padding:8px; width:220px; height:220px; box-shadow: var(--shadow-md);">`;
-      }
-      
-      const downloadBtn = document.getElementById('qr-download');
-      if (downloadBtn) {
-        downloadBtn.href = qrDataUrl;
-        downloadBtn.style.display = 'flex';
-      }
-    } else {
-      throw new Error('QRCode library not loaded');
-    }
-  } catch (e) {
-    console.error('QR 생성 실패:', e);
-    const container = document.getElementById('qr-container');
-    if (container) container.innerHTML = '<p style="color:var(--error)">QR 코드를 생성할 수 없습니다.</p>';
-  }
 }
 
 function copyCheckinUrl(url) {
