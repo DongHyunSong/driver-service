@@ -292,7 +292,7 @@ async function renderAttendanceCalendar() {
         <div class="stat-card"><div class="stat-value">${holidayCnt}</div><div class="stat-label">휴일</div></div>
       </div>
       ${logHtml ? `<div class="section-title">일별 출퇴근 기록</div>${logHtml}` : ''}
-      <button class="btn btn-secondary btn-block mt-md" onclick="showManualAttendanceModal()">+ 수동 입력</button>
+      ${AppState.currentUser.isAdmin ? `<button class="btn btn-secondary btn-block mt-md" onclick="showManualAttendanceModal()">+ 수동 입력</button>` : ''}
     </div>`;
 }
 
@@ -329,25 +329,32 @@ async function showAttendanceModal(dateStr) {
           <span style="color:var(--text-muted)">퇴근</span>
           <span>${rec.clockOut ? new Date(rec.clockOut).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '퇴근 전'}</span>
         </div>
+        <div class="info-row" style="padding:10px 14px;font-size:var(--font-sm)">
+          <span style="color:var(--text-muted)">총 근무시간</span>
+          <span>${rec.hoursWorked ? rec.hoursWorked + '시간' : '-'}</span>
+        </div>
       </div>
-    ` : ''}
-    <div class="form-group">
-      <label class="form-label">총 근무시간 (직접 수정)</label>
-      <input type="number" id="modal-hours" class="form-input" value="${rec?.hoursWorked || 8}" min="0" max="24" step="0.5">
-      <div class="text-muted mt-sm" style="font-size:var(--font-xs)">8시간 초과분은 자동으로 OT 적용</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">메모</label>
-      <input type="text" id="modal-note" class="form-input" value="${rec?.note || ''}" placeholder="특이사항">
-    </div>
-    <div class="flex gap-sm">
-      <button class="btn btn-primary" style="flex:1" onclick="saveAttendance('${dateStr}','${rec?.id||''}')">
-        ${rec ? '수정' : '저장'}
-      </button>
-      ${rec ? `<button class="btn btn-danger" onclick="deleteAttendance('${rec.id}')">삭제</button>` : ''}
-    </div>`;
+    ` : '<div class="text-muted" style="text-align:center;padding:20px;">출퇴근 기록이 없습니다.</div>'}
+    
+    ${AppState.currentUser.isAdmin ? `
+      <div class="form-group">
+        <label class="form-label">총 근무시간 (직접 수정)</label>
+        <input type="number" id="modal-hours" class="form-input" value="${rec?.hoursWorked || 8}" min="0" max="24" step="0.5">
+        <div class="text-muted mt-sm" style="font-size:var(--font-xs)">8시간 초과분은 자동으로 OT 적용</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">메모</label>
+        <input type="text" id="modal-note" class="form-input" value="${rec?.note || ''}" placeholder="특이사항">
+      </div>
+      <div class="flex gap-sm">
+        <button class="btn btn-primary" style="flex:1" onclick="saveAttendance('${dateStr}','${rec?.id||''}')">
+          ${rec ? '수정' : '저장'}
+        </button>
+        ${rec ? `<button class="btn btn-danger" onclick="deleteAttendance('${rec.id}')">삭제</button>` : ''}
+      </div>
+    ` : ''}`;
 
-  showModal(rec ? '근무 기록 수정' : '근무 기록 입력', html);
+  showModal(rec ? '근무 기록 확인' : '근무 기록', html);
 }
 
 function showManualAttendanceModal() {

@@ -9,7 +9,11 @@ const { readJSON, writeJSON, generateId } = require('../utils/dataStore');
 router.get('/', (req, res) => {
   let drivers = readJSON('drivers.json');
   if (req.query.employerId) {
-    drivers = drivers.filter(d => d.employerId === req.query.employerId);
+    const employers = readJSON('employers.json');
+    const emp = employers.find(e => e.id === req.query.employerId);
+    if (emp && !emp.isAdmin) {
+      drivers = drivers.filter(d => emp.driverIds && emp.driverIds.includes(d.id));
+    }
   }
   const safe = drivers.map(({ pin, ...rest }) => rest);
   res.json(safe);

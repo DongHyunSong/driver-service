@@ -3,7 +3,7 @@
     "id": "emp-001",
     "name": "송동현",
     "email": "song@example.com",
-    "pin": "1234",
+    "pin": "0912",
     "driverIds": [
       "drv-001"
     ],
@@ -13,10 +13,21 @@
     "id": "emp-002",
     "name": "김영식",
     "email": "kim@example.com",
-    "pin": "1234",
+    "pin": "7788",
     "driverIds": [
       "drv-002"
     ],
-    "createdAt": "2026-04-22T00:00:00Z"
+  },
+  {
+    "id": "emp-admin",
+    "name": "Admin",
+    "email": "admin@example.com",
+    "pin": "0000",
+    "driverIds": [
+      "drv-001",
+      "drv-002"
+    ],
+    "isAdmin": true,
+    "createdAt": "2026-04-24T00:00:00Z"
   }
 ]

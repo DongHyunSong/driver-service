@@ -35,6 +35,40 @@
     .view-toggle { display:flex; gap:6px; }
     .view-toggle .btn { padding: 6px 14px; font-size: var(--font-xs); }
     .view-toggle .btn.active { background: var(--accent-gradient); color: white; }
+
+    /* ── User List Grid for Login ── */
+    .user-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .user-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid transparent;
+      border-radius: 14px;
+      padding: 16px 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text-primary);
+    }
+    .user-card:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .user-card.active {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.1);
+      box-shadow: 0 4px 12px rgba(99,102,241,0.2);
+    }
+    .user-avatar {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: var(--accent-gradient);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 10px; font-weight: 700; font-size: 1.2rem; color: white;
+    }
+    .user-name { font-size: 0.95rem; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -61,27 +95,16 @@
           <p class="login-subtitle">급여 관리 서비스</p>
         </div>
 
-        <div class="role-selector">
-          <button id="role-employer" class="role-btn active" onclick="selectRole('employer')">
-            <span class="role-icon">👔</span>
-            <span class="role-label">고용인</span>
-            <span class="role-desc">Employer</span>
-          </button>
-          <button id="role-driver" class="role-btn" onclick="selectRole('driver')">
-            <span class="role-icon">🚗</span>
-            <span class="role-label">Driver</span>
-            <span class="role-desc">드라이버</span>
-          </button>
-        </div>
+
 
         <form id="login-form" class="login-form" onsubmit="handleLogin(event)">
           <div class="input-group">
-            <label class="input-label" id="user-label-text">사용자 선택</label>
-            <select id="user-select" class="form-select" required>
-              <option value="" disabled selected>사용자를 선택하세요</option>
-            </select>
+            <label class="input-label" id="user-label-text" style="text-align:center;margin-bottom:16px;">고용인 선택</label>
+            <div id="user-list" class="user-list">
+              <!-- Users will be populated here by JS -->
+            </div>
+            <input type="hidden" id="user-select" required>
           </div>
-
           <div class="pin-input-group">
             <label class="pin-label" id="pin-label-text">PIN 입력</label>
             <div class="pin-dots" id="pin-dots">
@@ -196,9 +219,9 @@
   </div>
 
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/js/app.js?v=4"></script>
-  <script src="/js/auth.js?v=4"></script>
-  <script src="/js/employer.js?v=4"></script>
-  <script src="/js/driver.js?v=4"></script>
+  <script src="/js/app.js?v=6"></script>
+  <script src="/js/auth.js?v=6"></script>
+  <script src="/js/employer.js?v=6"></script>
+  <script src="/js/driver.js?v=6"></script>
 </body>
 </html>

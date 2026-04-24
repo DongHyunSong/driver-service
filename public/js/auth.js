@@ -7,21 +7,24 @@ let selectedRole = 'employer';
 
 // 초기 로딩 시 사용자 목록 가져오기 및 저장된 상태 복원
 window.addEventListener('DOMContentLoaded', async () => {
-  const savedRole = localStorage.getItem('driver_payment_role') || 'employer';
   const savedUserId = localStorage.getItem('driver_payment_userId');
   
-  // 역할 선택 (UI 업데이트 포함)
-  await selectRole(savedRole, false); // false: 다시 저장하지 않음
+  // Update labels for employer only
+  const userLabel = document.getElementById('user-label-text');
+  const pinLabel = document.getElementById('pin-label-text');
+  const loginBtn = document.getElementById('login-btn');
 
-  // 사용자 선택 복원
+  if (userLabel) userLabel.textContent = '고용인 선택';
+  if (pinLabel) pinLabel.textContent = 'PIN 입력';
+  if (loginBtn) loginBtn.querySelector('span').textContent = '로그인';
+
+  await loadUsersForRole('employer');
+
   if (savedUserId) {
     const select = document.getElementById('user-select');
-    if (select) {
-      select.value = savedUserId;
-    }
+    if (select) select.value = savedUserId;
   }
 
-  // 사용자 선택 변경 시 저장
   const userSelect = document.getElementById('user-select');
   if (userSelect) {
     userSelect.addEventListener('change', (e) => {
@@ -32,68 +35,55 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 async function loadUsersForRole(role) {
   try {
-    const endpoint = role === 'employer' ? '/employers' : '/drivers';
-    const users = await api(endpoint);
-    const select = document.getElementById('user-select');
-    
-    if (!select) return;
+    const users = await api('/employers');
+    const list = document.getElementById('user-list');
+    const hiddenInput = document.getElementById('user-select');
+    if (!list || !hiddenInput) return;
 
-    // Clear existing options except the first one
-    select.innerHTML = `<option value="" disabled selected>${role === 'employer' ? '사용자를 선택하세요' : 'Select User'}</option>`;
-    
+    list.innerHTML = '';
     users.forEach(user => {
-      const opt = document.createElement('option');
-      opt.value = user.id;
-      opt.textContent = user.name;
-      select.appendChild(opt);
+      const card = document.createElement('div');
+      card.className = 'user-card';
+      card.id = `user-card-${user.id}`;
+      card.onclick = () => selectUser(user.id);
+      
+      const avatar = document.createElement('div');
+      avatar.className = 'user-avatar';
+      avatar.textContent = user.name.charAt(0).toUpperCase();
+      
+      const name = document.createElement('div');
+      name.className = 'user-name';
+      name.textContent = user.name;
+      
+      card.appendChild(avatar);
+      card.appendChild(name);
+      list.appendChild(card);
     });
 
-    // 데이터가 로드된 후 저장된 ID가 있으면 다시 적용
     const savedUserId = localStorage.getItem('driver_payment_userId');
-    if (savedUserId) {
-      select.value = savedUserId;
-    }
+    if (savedUserId) selectUser(savedUserId);
   } catch (err) {
     console.error('Failed to load users:', err);
   }
 }
 
-async function selectRole(role, shouldSave = true) {
-  selectedRole = role;
-  if (shouldSave) {
-    localStorage.setItem('driver_payment_role', role);
+function selectUser(id) {
+  const hiddenInput = document.getElementById('user-select');
+  if (hiddenInput) {
+    hiddenInput.value = id;
+    localStorage.setItem('driver_payment_userId', id);
   }
 
-  document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
-  const roleBtn = document.getElementById(`role-${role}`);
-  if (roleBtn) roleBtn.classList.add('active');
+  document.querySelectorAll('.user-card').forEach(el => el.classList.remove('active'));
+  const activeCard = document.getElementById(`user-card-${id}`);
+  if (activeCard) activeCard.classList.add('active');
 
-  // Update labels
-  const userLabel = document.getElementById('user-label-text');
-  const pinLabel = document.getElementById('pin-label-text');
-  const loginBtn = document.getElementById('login-btn');
-
-  if (role === 'employer') {
-    if (userLabel) userLabel.textContent = '고용인 선택';
-    if (pinLabel) pinLabel.textContent = 'PIN 입력';
-    if (loginBtn) loginBtn.querySelector('span').textContent = '로그인';
-  } else {
-    if (userLabel) userLabel.textContent = 'Select Driver';
-    if (pinLabel) pinLabel.textContent = 'Enter PIN';
-    if (loginBtn) loginBtn.querySelector('span').textContent = 'Login';
-  }
-
-  // Load users for the selected role
-  await loadUsersForRole(role);
-
-  // Clear previous input
   const pinInput = document.getElementById('pin-input');
   if (pinInput) {
     pinInput.value = '';
     updatePinDots();
+    setTimeout(() => pinInput.focus(), 100);
   }
-  const errorEl = document.getElementById('login-error');
-  if (errorEl) errorEl.textContent = '';
 }
 
 async function handleLogin(e) {
@@ -103,44 +93,35 @@ async function handleLogin(e) {
   const errorEl = document.getElementById('login-error');
 
   if (!userId) {
-    errorEl.textContent = selectedRole === 'employer' ? '사용자를 선택해주세요.' : 'Please select a user.';
+    errorEl.textContent = '사용자를 선택해주세요.';
     return;
   }
-
   if (!pin || pin.length < 4) {
-    errorEl.textContent = selectedRole === 'employer' ? 'PIN 4자리를 입력해주세요.' : 'Please enter 4-digit PIN.';
+    errorEl.textContent = 'PIN 4자리를 입력해주세요.';
     return;
   }
 
   try {
     const data = await api('/auth/login', {
       method: 'POST',
-      body: { role: selectedRole, userId, pin }
+      body: { role: 'employer', userId, pin }
     });
 
     if (data.success) {
       AppState.currentUser = data.user;
-      AppState.currentRole = data.role;
+      AppState.currentRole = 'employer';
       
-      // 로그인 성공 시 정보 저장
-      localStorage.setItem('driver_payment_role', selectedRole);
       localStorage.setItem('driver_payment_userId', userId);
 
-      if (data.role === 'employer') {
-        document.getElementById('employer-name').textContent = data.user.name;
-        showScreen('employer-screen');
-        if (data.user.driverIds && data.user.driverIds.length > 0) {
-          AppState.selectedDriverId = data.user.driverIds[0];
-        }
-        renderEmployerDashboard();
-      } else {
-        document.getElementById('driver-name').textContent = data.user.name;
-        showScreen('driver-screen');
-        renderDriverSalary();
+      document.getElementById('employer-name').textContent = data.user.name;
+      showScreen('employer-screen');
+      if (data.user.driverIds && data.user.driverIds.length > 0) {
+        AppState.selectedDriverId = data.user.driverIds[0];
       }
+      renderEmployerDashboard();
     }
   } catch (err) {
-    errorEl.textContent = selectedRole === 'employer' ? '잘못된 PIN입니다.' : 'Invalid PIN.';
+    errorEl.textContent = '잘못된 PIN입니다.';
     const form = document.getElementById('login-form');
     if (form) {
       form.style.animation = 'none';
@@ -155,7 +136,6 @@ function handleLogout() {
   AppState.currentRole = null;
   AppState.selectedDriverId = null;
 
-  // Clear inputs but KEEP the role/user selection
   const pinInput = document.getElementById('pin-input');
   if (pinInput) {
     pinInput.value = '';
@@ -165,7 +145,7 @@ function handleLogout() {
   if (errorEl) errorEl.textContent = '';
 
   showScreen('login-screen');
-  loadUsersForRole(selectedRole);
+  loadUsersForRole('employer');
 }
 
 // Registration Logic
