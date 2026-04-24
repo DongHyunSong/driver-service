@@ -4,9 +4,41 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { Storage } = require('@google-cloud/storage');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const CONFIG_DIR = path.join(__dirname, '..', 'config');
+
+let storage, bucket;
+const isGCP = process.env.GOOGLE_CLOUD_PROJECT;
+const bucketName = process.env.GCS_BUCKET || (isGCP ? `${process.env.GOOGLE_CLOUD_PROJECT}.appspot.com` : null);
+
+if (bucketName) {
+  storage = new Storage();
+  bucket = storage.bucket(bucketName);
+  console.log(`[GCS] Storage 연동 활성화 (버킷: ${bucketName})`);
+} else {
+  console.log(`[GCS] 버킷 환경변수가 없으므로 로컬 파일 시스템만 사용합니다.`);
+}
+
+/**
+ * 서버 시작 시 GCP 버킷에서 최신 데이터 다운로드 (백그라운드 동기화)
+ */
+async function syncFromCloud() {
+  if (!bucket) return;
+  const files = ['employers.json', 'drivers.json', 'attendance.json', 'payments.json', 'pay-settings.json'];
+  for (const file of files) {
+    const isConfig = file === 'pay-settings.json';
+    const dir = isConfig ? CONFIG_DIR : DATA_DIR;
+    const filePath = path.join(dir, file);
+    try {
+      await bucket.file(file).download({ destination: filePath });
+      console.log(`[GCS] ${file} 다운로드 성공`);
+    } catch (err) {
+      console.log(`[GCS] ${file} 다운로드 실패 (초기화 중이거나 파일 없음)`);
+    }
+  }
+}
 
 /**
  * JSON 파일 읽기
@@ -31,6 +63,14 @@ function writeJSON(filename, data, isConfig = false) {
   const filePath = path.join(dir, filename);
   try {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    
+    // GCS 비동기 업로드 (배포 환경에서 데이터 유지용)
+    if (bucket) {
+      bucket.upload(filePath, { destination: filename }).catch(err => {
+        console.error(`[GCS] ${filename} 업로드 실패:`, err.message);
+      });
+    }
+    
     return true;
   } catch (err) {
     console.error(`Error writing ${filePath}:`, err.message);
@@ -95,5 +135,6 @@ module.exports = {
   isHoliday,
   isSunday,
   getDayType,
-  generateId
+  generateId,
+  syncFromCloud
 };
