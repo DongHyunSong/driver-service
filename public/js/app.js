@@ -372,6 +372,8 @@ window.addEventListener('DOMContentLoaded', () => {
   if (pinDots && pinInput) {
     pinDots.addEventListener('click', () => pinInput.focus());
     pinInput.addEventListener('input', updatePinDots);
+    pinInput.addEventListener('keyup', updatePinDots);
+    pinInput.addEventListener('keydown', updatePinDots);
     pinInput.addEventListener('focus', updatePinDots);
   }
 

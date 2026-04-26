@@ -1,1 +1,15 @@
-[]
+[
+  {
+    "id": "att-mofk3awha0xara",
+    "driverId": "drv-001",
+    "date": "2026-04-26",
+    "dayType": "holiday",
+    "worked": true,
+    "clockIn": null,
+    "clockOut": null,
+    "hoursWorked": 8,
+    "otHours": 0,
+    "note": "",
+    "createdAt": "2026-04-26T09:18:45.233Z"
+  }
+]

@@ -196,7 +196,7 @@ async function addDriver() {
 }
 
 // ========================
-// Attendance Calendar
+// Attendance Calendar & Table
 // ========================
 async function renderAttendanceCalendar() {
   const content = document.getElementById('employer-content');
@@ -214,36 +214,47 @@ async function renderAttendanceCalendar() {
     driverName  = drv.name;
   } catch (e) {}
 
-  const attMap = {};
-  attendance.forEach(r => { attMap[r.date] = r; });
+  const isTable = AppState.attendanceView === 'table';
 
-  const [year, month] = AppState.currentMonth.split('-').map(Number);
-  const firstDay     = new Date(year, month - 1, 1).getDay();
-  const daysInMonth  = new Date(year, month, 0).getDate();
-  const today        = new Date().toISOString().slice(0, 10);
-  const weekDays     = ['일','월','화','수','목','금','토'];
+  // Toggle View Handler
+  window.toggleAttendanceView = (view) => {
+    AppState.attendanceView = view;
+    renderAttendanceCalendar();
+  };
 
-  let calHtml = weekDays.map(d => `<div class="calendar-weekday">${d}</div>`).join('');
-  for (let i = 0; i < firstDay; i++) calHtml += '<div class="calendar-day empty"></div>';
+  let viewContent = '';
+  if (isTable) {
+    viewContent = buildAttendanceTableHTML(AppState.currentMonth, attendance, AppState.settings, 'ko');
+  } else {
+    const [year, month] = AppState.currentMonth.split('-').map(Number);
+    const firstDay     = new Date(year, month - 1, 1).getDay();
+    const daysInMonth  = new Date(year, month, 0).getDate();
+    const today        = new Date().toISOString().slice(0, 10);
+    const weekDays     = ['일','월','화','수','목','금','토'];
 
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr  = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const rec      = attMap[dateStr];
-    const isToday  = dateStr === today;
-    const isSun    = new Date(year, month - 1, d).getDay() === 0;
-    const isHol    = AppState.settings?.philippineHolidays?.includes(dateStr);
-    let   cls      = 'calendar-day';
-    if (isToday)            cls += ' today';
-    if (rec?.worked)        cls += ' worked';
-    if (isSun || isHol)     cls += ' holiday';
+    let calHtml = weekDays.map(d => `<div class="calendar-weekday">${d}</div>`).join('');
+    for (let i = 0; i < firstDay; i++) calHtml += '<div class="calendar-day empty"></div>';
 
-    const otBadge = rec?.otHours > 0
-      ? `<span class="ot-badge">+${rec.otHours}h</span>` : '';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr  = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const rec      = attendance.find(r => r.date === dateStr);
+      const isToday  = dateStr === today;
+      const isSun    = new Date(year, month - 1, d).getDay() === 0;
+      const isHol    = AppState.settings?.philippineHolidays?.includes(dateStr);
+      let   cls      = 'calendar-day';
+      if (isToday)            cls += ' today';
+      if (rec?.worked)        cls += ' worked';
+      if (isSun || isHol)     cls += ' holiday';
 
-    calHtml += `
-      <div class="${cls}" onclick="showAttendanceModal('${dateStr}')">
-        <span>${d}</span>${otBadge}
-      </div>`;
+      const otBadge = rec?.otHours > 0
+        ? `<span class="ot-badge">+${rec.otHours}h</span>` : '';
+
+      calHtml += `
+        <div class="${cls}" onclick="showAttendanceModal('${dateStr}')">
+          <span>${d}</span>${otBadge}
+        </div>`;
+    }
+    viewContent = `<div class="calendar-grid">${calHtml}</div>`;
   }
 
   const worked     = attendance.filter(r => r.worked);
@@ -252,20 +263,10 @@ async function renderAttendanceCalendar() {
   const weekdayCnt = worked.filter(r => r.dayType === 'weekday').length;
   const holidayCnt = worked.filter(r => r.dayType === 'holiday').length;
 
-  // 일별 로그 (출퇴근 시각)
-  const logHtml = worked.slice().reverse().map(r => `
-    <div class="list-item" onclick="showAttendanceModal('${r.date}')">
-      <div class="list-avatar" style="font-size:10px;${r.dayType==='holiday'?'background:linear-gradient(135deg,#ef4444,#f97316)':''}">${r.date.slice(8)}</div>
-      <div class="list-info">
-        <div class="list-name">${r.date} <span class="badge ${r.dayType==='holiday'?'badge-error':'badge-info'}">${r.dayType==='holiday'?'휴일':'평일'}</span></div>
-        <div class="list-meta">
-          ▶ ${r.clockIn  ? new Date(r.clockIn ).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '수동입력'}
-          &nbsp;→&nbsp;
-          ${r.clockOut ? new Date(r.clockOut).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '퇴근 전'}
-          &nbsp;·&nbsp;${r.hoursWorked}h (OT:${r.otHours}h)
-        </div>
-      </div>
-    </div>`).join('');
+  // Excel Export Handler
+  window.handleExcelExport = () => {
+    exportAttendanceToExcel(AppState.currentMonth, attendance, AppState.settings, driverName, 'ko');
+  };
 
   content.innerHTML = `
     <div style="animation:fadeInUp .4s ease">
@@ -276,19 +277,33 @@ async function renderAttendanceCalendar() {
             <div class="card-title">${driverName}</div>
             <div class="card-subtitle">출근 기록</div>
           </div>
-          <button class="btn btn-ghost btn-sm" onclick="showQRModal('${AppState.selectedDriverId}','${driverName}')">📱 QR</button>
+          <div class="view-toggle">
+            <button class="btn btn-sm ${!isTable ? 'active' : ''}" onclick="toggleAttendanceView('calendar')">달력</button>
+            <button class="btn btn-sm ${isTable ? 'active' : ''}" onclick="toggleAttendanceView('table')">표</button>
+          </div>
         </div>
         <div class="calendar-header">
           <button class="btn btn-ghost btn-sm" onclick="prevMonth();renderAttendanceCalendar()">◀</button>
           <span class="calendar-title">${formatMonthYear(AppState.currentMonth)}</span>
           <button class="btn btn-ghost btn-sm" onclick="nextMonth();renderAttendanceCalendar()">▶</button>
         </div>
-        <div class="calendar-grid">${calHtml}</div>
+        ${viewContent}
       </div>
       <div class="stat-grid">
         <div class="stat-card"><div class="stat-value">${totalDays}</div><div class="stat-label">근무일수</div></div>
         <div class="stat-card"><div class="stat-value">${totalOt}h</div><div class="stat-label">OT 합계</div></div>
         <div class="stat-card"><div class="stat-value">${weekdayCnt}</div><div class="stat-label">평일</div></div>
+        <div class="stat-card"><div class="stat-value">${holidayCnt}</div><div class="stat-label">휴일</div></div>
+      </div>
+      <div class="section-title">기능</div>
+      <div class="flex gap-sm">
+        <button class="btn btn-secondary btn-block" onclick="handleExcelExport()">
+          📊 Excel 다운로드
+        </button>
+      </div>
+      ${AppState.currentUser.isAdmin ? `<button class="btn btn-secondary btn-block mt-md" onclick="showManualAttendanceModal()">+ 수동 입력</button>` : ''}
+    </div>`;
+}alue">${weekdayCnt}</div><div class="stat-label">평일</div></div>
         <div class="stat-card"><div class="stat-value">${holidayCnt}</div><div class="stat-label">휴일</div></div>
       </div>
       ${logHtml ? `<div class="section-title">일별 출퇴근 기록</div>${logHtml}` : ''}

@@ -1,29 +1,9 @@
 [
   {
-    "id": "emp-001",
-    "name": "송동현",
-    "email": "songdh418@gmail.com",
-    "pin": "0912",
-    "driverIds": [
-      "drv-001"
-    ],
-    "createdAt": "2026-04-22T00:00:00Z"
-  },
-  {
-    "id": "emp-002",
-    "name": "김영식",
-    "email": "ys0212.kim@samsung.com",
-    "pin": "7788",
-    "driverIds": [
-      "drv-002"
-    ],
-    "createdAt": "2026-04-22T00:00:00Z"
-  },
-  {
     "id": "emp-admin",
     "name": "Admin",
-    "email": "admin@example.com",
-    "pin": "0000",
+    "email": "songdh418@gmail.com",
+    "pin": "0912",
     "driverIds": [
       "drv-001",
       "drv-002"
