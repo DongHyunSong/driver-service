@@ -303,12 +303,6 @@ async function renderAttendanceCalendar() {
       </div>
       ${AppState.currentUser.isAdmin ? `<button class="btn btn-secondary btn-block mt-md" onclick="showManualAttendanceModal()">+ 수동 입력</button>` : ''}
     </div>`;
-}alue">${weekdayCnt}</div><div class="stat-label">평일</div></div>
-        <div class="stat-card"><div class="stat-value">${holidayCnt}</div><div class="stat-label">휴일</div></div>
-      </div>
-      ${logHtml ? `<div class="section-title">일별 출퇴근 기록</div>${logHtml}` : ''}
-      ${AppState.currentUser.isAdmin ? `<button class="btn btn-secondary btn-block mt-md" onclick="showManualAttendanceModal()">+ 수동 입력</button>` : ''}
-    </div>`;
 }
 
 // ========================
