@@ -1,4 +1,4 @@
-const CACHE_NAME = 'drvpay-v2';
+const CACHE_NAME = 'drvpay-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

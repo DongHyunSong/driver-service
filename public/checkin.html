@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#6366f1">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <title>드라이버 체크인 — Driver Payment</title>
+  <title>Driver Check-in — Driver Payment</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -202,7 +202,7 @@
     </div>
 
     <div id="loading" style="text-align:center; color:var(--muted); padding: 40px 0;">
-      로딩 중...
+      Loading...
     </div>
 
     <div id="main" style="display:none">
@@ -215,11 +215,11 @@
         
         <div style="margin-top:20px; background:rgba(0,0,0,0.2); padding:12px; border-radius:12px; text-align:left;">
           <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:0.9rem;">
-            <span style="color:var(--muted)">출근 시간</span>
+            <span style="color:var(--muted)">Clock In</span>
             <strong id="info-checkin">—</strong>
           </div>
           <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
-            <span style="color:var(--muted)">퇴근 시간</span>
+            <span style="color:var(--muted)">Clock Out</span>
             <strong id="info-checkout">—</strong>
           </div>
         </div>
@@ -230,14 +230,14 @@
       <div class="menu-grid">
         <button class="btn btn-checkin" id="btn-checkin" onclick="doCheckIn()">
           <span style="font-size:1.5rem">📍</span>
-          <span>체크인 (출근)</span>
+          <span>Clock In</span>
         </button>
         <button class="btn btn-checkout" id="btn-checkout" onclick="doCheckOut()">
           <span style="font-size:1.5rem">✅</span>
-          <span>체크아웃 (퇴근)</span>
+          <span>Clock Out</span>
         </button>
         <button class="btn btn-history" onclick="showHistory()">
-          <span>📅</span> 나의 출근 현황 (이번 달)
+          <span>📅</span> My Attendance Log (This Month)
         </button>
       </div>
     </div>
@@ -247,11 +247,11 @@
   <div class="modal" id="history-modal">
     <div class="modal-content">
       <div class="modal-header">
-        <span>출근 현황</span>
+        <span>Attendance History</span>
         <button class="close-btn" onclick="closeHistory()">&times;</button>
       </div>
       <div class="modal-body" id="history-list">
-        <div style="padding:20px; text-align:center; color:var(--muted);">기록을 불러오는 중...</div>
+        <div style="padding:20px; text-align:center; color:var(--muted);">Loading records...</div>
       </div>
     </div>
   </div>
@@ -261,8 +261,8 @@
 
     function updateClock() {
       const now = new Date();
-      const timeStr = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-      const dateStr = now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+      const timeStr = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+      const dateStr = now.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
       document.getElementById('clock').textContent = timeStr;
       document.getElementById('date-display').textContent = dateStr;
     }
@@ -271,7 +271,7 @@
 
     function fmtTime(iso) {
       if (!iso) return '—';
-      return new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+      return new Date(iso).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', hour12: true });
     }
 
     function renderStatus(status, record) {
@@ -284,17 +284,17 @@
 
       // 버튼 상태 관리
       if (status === 'not_checked_in') {
-        badge.textContent = '● 출근 전';
+        badge.textContent = '● Not Clocked In';
         badge.className = 'status-badge status-none';
         btnIn.disabled = false;
         btnOut.disabled = true;
       } else if (status === 'checked_in') {
-        badge.textContent = '● 근무 중';
+        badge.textContent = '● Working';
         badge.className = 'status-badge status-in';
         btnIn.disabled = true;
         btnOut.disabled = false;
       } else if (status === 'completed') {
-        badge.textContent = '✓ 퇴근 완료';
+        badge.textContent = '✓ Clocked Out';
         badge.className = 'status-badge status-done';
         btnIn.disabled = true;
         btnOut.disabled = true;
@@ -304,7 +304,7 @@
     async function init() {
       try {
         const drvRes = await fetch(`/api/drivers/${driverId}`);
-        if (!drvRes.ok) throw new Error('드라이버 정보를 찾을 수 없습니다.');
+        if (!drvRes.ok) throw new Error('Driver not found.');
         const drv = await drvRes.json();
 
         document.getElementById('driver-name-el').textContent = drv.name;
@@ -331,7 +331,7 @@
     }
 
     async function doCheckIn() {
-      if(!confirm('출근 처리하시겠습니까?')) return;
+      if(!confirm('Do you want to clock in?')) return;
       try {
         const res = await fetch('/api/attendance/checkin', {
           method: 'POST',
@@ -340,18 +340,18 @@
         });
         const data = await res.json();
         if (res.ok) {
-          showResult('success', '✅ 출근이 기록되었습니다!');
+          showResult('success', '✅ Clocked in successfully!');
           await loadTodayStatus();
         } else {
           showResult('error', '⚠️ ' + data.error);
         }
       } catch (e) {
-        showResult('error', '⚠️ 네트워크 오류가 발생했습니다.');
+        showResult('error', '⚠️ Network error occurred.');
       }
     }
 
     async function doCheckOut() {
-      if(!confirm('퇴근 처리하시겠습니까?')) return;
+      if(!confirm('Do you want to clock out?')) return;
       try {
         const res = await fetch('/api/attendance/checkout', {
           method: 'POST',
@@ -360,20 +360,20 @@
         });
         const data = await res.json();
         if (res.ok) {
-          showResult('success', `✅ 퇴근 완료! (오늘 근무: ${data.record.hoursWorked}시간)`);
+          showResult('success', `✅ Clocked out! (Today: ${data.record.hoursWorked} hours)`);
           await loadTodayStatus();
         } else {
           showResult('error', '⚠️ ' + data.error);
         }
       } catch (e) {
-        showResult('error', '⚠️ 네트워크 오류가 발생했습니다.');
+        showResult('error', '⚠️ Network error occurred.');
       }
     }
 
     async function showHistory() {
       document.getElementById('history-modal').classList.add('active');
       const listEl = document.getElementById('history-list');
-      listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted);">불러오는 중...</div>';
+      listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted);">Loading...</div>';
       
       try {
         const today = new Date().toISOString().slice(0, 10);
@@ -381,30 +381,30 @@
         const recs = await res.json();
         
         if (recs.length === 0) {
-          listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted);">이번 달 출근 기록이 없습니다.</div>';
+          listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted);">No attendance records for this month.</div>';
           return;
         }
 
         let html = '';
         recs.slice().reverse().forEach(r => {
           if (!r.worked) return;
-          const typeStr = r.dayType === 'holiday' ? '휴일' : '평일';
+          const typeStr = r.dayType === 'holiday' ? 'Holiday' : 'Weekday';
           html += `
             <div class="history-item">
               <div>
                 <div class="history-date">${r.date}</div>
-                <span class="history-type">${typeStr}</span> <span style="font-size:0.8rem;color:var(--muted);margin-left:4px;">${r.hoursWorked}시간</span>
+                <span class="history-type">${typeStr}</span> <span style="font-size:0.8rem;color:var(--muted);margin-left:4px;">${r.hoursWorked} hrs</span>
               </div>
               <div class="history-times">
-                <div>출근: ${fmtTime(r.clockIn)}</div>
-                <div>퇴근: ${fmtTime(r.clockOut)}</div>
+                <div>In: ${fmtTime(r.clockIn)}</div>
+                <div>Out: ${fmtTime(r.clockOut)}</div>
               </div>
             </div>
           `;
         });
-        listEl.innerHTML = html || '<div style="padding:20px; text-align:center; color:var(--muted);">이번 달 출근 기록이 없습니다.</div>';
+        listEl.innerHTML = html || '<div style="padding:20px; text-align:center; color:var(--muted);">No attendance records for this month.</div>';
       } catch (e) {
-        listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--error);">기록을 불러오지 못했습니다.</div>';
+        listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--error);">Failed to load records.</div>';
       }
     }
 

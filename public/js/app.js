@@ -205,8 +205,66 @@ function exportAttendanceToExcel(month, attendance, settings, driverName, lang =
   const sheetName = month.replace('-','_');
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const downloadDate = `${yyyy}${mm}${dd}`;
+
   const safeDriver = driverName.replace(/[^a-zA-Z0-9가-힣]/g, '_');
-  XLSX.writeFile(wb, `attendance_${safeDriver}_${month}.xlsx`);
+  XLSX.writeFile(wb, `${safeDriver}_${month}_${downloadDate}.xlsx`);
+  return true;
+}
+
+/**
+ * CSV Export (Date, Check-in, Check-out Only)
+ */
+function exportAttendanceToCSV(month, attendance, settings, driverName, lang = 'ko') {
+  const isKo = lang === 'ko';
+  const days  = buildMonthDays(month, attendance, settings);
+
+  const headers = isKo ? ['날짜', '출근시간', '퇴근시간'] : ['Date', 'Check-in', 'Check-out'];
+  const sheetData = [headers];
+
+  days.forEach(({ dateStr, rec }) => {
+    const worked  = rec?.worked ?? false;
+    const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false }) : '';
+
+    sheetData.push([
+      dateStr,
+      worked ? fmtTime(rec?.clockIn) : '',
+      worked ? fmtTime(rec?.clockOut) : ''
+    ]);
+  });
+
+  const csvContent = sheetData.map(e => e.join(",")).join("\n");
+  const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+  
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const downloadDate = `${yyyy}${mm}${dd}`;
+
+  const safeDriver = driverName.replace(/[^a-zA-Z0-9가-힣]/g, '_');
+  const fileName = `${safeDriver}_${month}_${downloadDate}.csv`;
+
+  if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+    window.navigator.msSaveOrOpenBlob(blob, fileName);
+  } else {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.style.display = "none";
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 1000);
+  }
+  
   return true;
 }
 
@@ -354,9 +412,11 @@ async function loadSettings() {
 // ========================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('SW registered:', reg.scope))
-      .catch(err => console.log('SW registration failed:', err));
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      for (let reg of registrations) {
+        reg.unregister().then(() => console.log('SW unregistered:', reg.scope));
+      }
+    });
   });
 }
 
