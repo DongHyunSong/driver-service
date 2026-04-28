@@ -144,40 +144,51 @@ function exportAttendanceToExcel(month, attendance, settings, driverName, lang =
   const days  = buildMonthDays(month, attendance, settings);
 
   const headers = isKo
-    ? ['날짜','요일','구분','출근시각','퇴근시각','근무시간(h)','OT(h)','기본급(₱)','OT급여(₱)','합계(₱)','메모']
-    : ['Date','Day','Type','Clock In','Clock Out','Hours Worked','OT Hours','Base Pay (₱)','OT Pay (₱)','Total Pay (₱)','Note'];
+    ? ['날짜','요일','구분','출근시각','퇴근시각','근무시간(h)','OT(h)','메모']
+    : ['Date','Day','Type','Clock In','Clock Out','Hours Worked','OT Hours','Note'];
 
   const sheetData = [headers];
-  let totalWorked=0, totalHours=0, totalOt=0, totalBase=0, totalOtP=0;
+  let totalWorked=0, totalHours=0, totalOt=0;
 
   days.forEach(({ dateStr, dowKo, dowEn, isHoliday, autoType, rec }) => {
     const worked  = rec?.worked ?? false;
     const dayType = rec?.dayType ?? autoType;
     const isHolRow = dayType === 'holiday';
-    const rate    = isHolRow ? settings?.holiday : settings?.weekday;
 
-    const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', hour12: false }) : '';
+    const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false }) : '';
     const hours   = rec?.hoursWorked ?? 0;
     const ot      = rec?.otHours    ?? 0;
-    const basePay = worked ? (rate?.dailyRate ?? 0) : 0;
-    const otPay   = worked ? parseFloat((ot * (rate?.otRatePerHour ?? 0)).toFixed(2)) : 0;
 
-    if (worked) { totalWorked++; totalHours+=hours; totalOt+=ot; totalBase+=basePay; totalOtP+=otPay; }
+    if (worked) { totalWorked++; totalHours+=hours; totalOt+=ot; }
 
     const dtLabel = isKo ? (isHolRow ? '휴일' : '평일') : (isHolRow ? 'Holiday' : 'Weekday');
+
+    let clockInStr = '';
+    let clockOutStr = '';
+    let noteStr = rec?.note || '';
+
+    if (worked) {
+      if (!rec?.clockIn) {
+        clockInStr = '08:00:00';
+        const endDate = new Date(`2000-01-01T08:00:00`);
+        endDate.setMinutes(endDate.getMinutes() + hours * 60);
+        clockOutStr = endDate.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false });
+        noteStr = '개인입력' + (noteStr ? ' - ' + noteStr : '');
+      } else {
+        clockInStr = fmtTime(rec.clockIn);
+        clockOutStr = fmtTime(rec.clockOut);
+      }
+    }
 
     sheetData.push([
       dateStr,
       isKo ? dowKo : dowEn,
       dtLabel,
-      worked ? fmtTime(rec?.clockIn) : '',
-      worked ? fmtTime(rec?.clockOut) : '',
+      clockInStr,
+      clockOutStr,
       worked ? hours : '',
       worked ? ot : '',
-      worked ? basePay : '',
-      worked ? otPay : '',
-      worked ? parseFloat((basePay + otPay).toFixed(2)) : '',
-      rec?.note || ''
+      noteStr
     ]);
   });
 
@@ -187,9 +198,6 @@ function exportAttendanceToExcel(month, attendance, settings, driverName, lang =
     totalLabel, '', `${totalWorked}${isKo?'일':' days'}`, '', '',
     parseFloat(totalHours.toFixed(2)),
     parseFloat(totalOt.toFixed(2)),
-    parseFloat(totalBase.toFixed(2)),
-    parseFloat(totalOtP.toFixed(2)),
-    parseFloat((totalBase + totalOtP).toFixed(2)),
     ''
   ]);
 
@@ -198,7 +206,7 @@ function exportAttendanceToExcel(month, attendance, settings, driverName, lang =
   // 열 너비 설정
   ws['!cols'] = [
     {wch:12},{wch:6},{wch:8},{wch:10},{wch:10},
-    {wch:10},{wch:8},{wch:12},{wch:12},{wch:12},{wch:20}
+    {wch:10},{wch:8},{wch:20}
   ];
 
   const wb = XLSX.utils.book_new();
@@ -229,11 +237,27 @@ function exportAttendanceToCSV(month, attendance, settings, driverName, lang = '
   days.forEach(({ dateStr, rec }) => {
     const worked  = rec?.worked ?? false;
     const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false }) : '';
+    
+    let clockInStr = '';
+    let clockOutStr = '';
+
+    if (worked) {
+      if (!rec?.clockIn) {
+        const hours = rec?.hoursWorked ?? 0;
+        clockInStr = '08:00:00';
+        const endDate = new Date(`2000-01-01T08:00:00`);
+        endDate.setMinutes(endDate.getMinutes() + hours * 60);
+        clockOutStr = endDate.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false });
+      } else {
+        clockInStr = fmtTime(rec.clockIn);
+        clockOutStr = fmtTime(rec.clockOut);
+      }
+    }
 
     sheetData.push([
       dateStr,
-      worked ? fmtTime(rec?.clockIn) : '',
-      worked ? fmtTime(rec?.clockOut) : ''
+      clockInStr,
+      clockOutStr
     ]);
   });
 
