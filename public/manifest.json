@@ -1,7 +1,7 @@
 {
-  "name": "Driver Payment",
-  "short_name": "DrvPay",
-  "description": "필리핀 운전기사 급여 관리 서비스",
+  "name": "Driver Attendance",
+  "short_name": "DrvAtt",
+  "description": "필리핀 운전기사 출퇴근 관리 서비스",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0e1a",

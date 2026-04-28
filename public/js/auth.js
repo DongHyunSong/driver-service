@@ -247,9 +247,12 @@ async function handleRegister(e) {
       method: 'POST',
       body
     });
-    showToast(role === 'employer' ? '고용인이 등록되었습니다.' : 'Driver registered successfully.', 'success');
+    showToast(role === 'employer' ? '관리자가 등록되었습니다.' : '드라이버가 등록되었습니다.', 'success');
     closeAuthModal('register-modal');
     loadUsersForRole(selectedRole); // Refresh login dropdown
+    if (typeof renderEmployerDashboard === 'function' && AppState.currentRole === 'employer') {
+      renderEmployerDashboard();
+    }
   } catch (err) {
     showToast(err.message || '등록 실패', 'error');
   }

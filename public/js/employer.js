@@ -85,15 +85,15 @@ async function renderEmployerDashboard() {
   content.innerHTML = `
     <div style="animation:fadeInUp .4s ease">
 
-      <div class="stat-grid">
-        <div class="stat-card">
-          <div class="stat-value">${drivers.length}</div>
-          <div class="stat-label">드라이버 수</div>
+      <div style="display:flex; justify-content:center; margin-bottom: var(--space-lg);">
+        <div class="stat-card" style="width: 100%; max-width: 240px;">
+          <div class="stat-value" style="font-size: var(--font-3xl);">${drivers.length}</div>
+          <div class="stat-label">등록된 드라이버 수</div>
         </div>
       </div>
       <div class="section-title">소속 드라이버</div>
       ${driversHtml || '<div class="empty-state"><p>등록된 드라이버가 없습니다.</p></div>'}
-      <button class="btn btn-secondary btn-block mt-lg" onclick="showAddDriverModal()">+ 드라이버 추가</button>
+      <button class="btn btn-secondary btn-block mt-lg" onclick="showRegisterModal('driver')">+ 드라이버 추가</button>
     </div>`;
 }
 
