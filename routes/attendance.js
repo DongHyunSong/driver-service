@@ -32,7 +32,7 @@ router.get('/', (req, res) => {
 
 // ── POST /api/attendance/checkin  (QR 스캔 → 출근) ───────────────────
 router.post('/checkin', (req, res) => {
-  const { driverId } = req.body;
+  const { driverId, location } = req.body;
   if (!driverId) return res.status(400).json({ error: 'driverId는 필수입니다.' });
 
   // 드라이버 존재 확인
@@ -94,7 +94,9 @@ router.post('/checkin', (req, res) => {
     dayType,
     worked: true,
     clockIn: now.toISOString(),
+    clockInLocation: location || null,
     clockOut: null,
+    clockOutLocation: null,
     hoursWorked: 0,
     otHours: 0,
     note: '',
@@ -112,7 +114,7 @@ router.post('/checkin', (req, res) => {
 
 // ── POST /api/attendance/checkout  (QR 스캔 → 퇴근) ─────────────────
 router.post('/checkout', (req, res) => {
-  const { driverId } = req.body;
+  const { driverId, location } = req.body;
   if (!driverId) return res.status(400).json({ error: 'driverId는 필수입니다.' });
 
   const now = new Date();
@@ -132,6 +134,7 @@ router.post('/checkout', (req, res) => {
   const { hoursWorked, otHours } = calcHours(records[idx].clockIn, clockOut);
 
   records[idx].clockOut = clockOut;
+  records[idx].clockOutLocation = location || null;
   records[idx].hoursWorked = hoursWorked;
   records[idx].otHours = otHours;
   records[idx].updatedAt = clockOut;
@@ -251,8 +254,18 @@ router.put('/:id', (req, res) => {
   if (dayType) records[index].dayType = dayType;
   if (note !== undefined) records[index].note = note;
 
-  if (clockIn !== undefined) records[index].clockIn = clockIn;
-  if (clockOut !== undefined) records[index].clockOut = clockOut;
+  if (clockIn !== undefined && clockIn !== records[index].clockIn) {
+    if (!records[index].originalClockIn && records[index].clockIn) {
+      records[index].originalClockIn = records[index].clockIn;
+    }
+    records[index].clockIn = clockIn;
+  }
+  if (clockOut !== undefined && clockOut !== records[index].clockOut) {
+    if (!records[index].originalClockOut && records[index].clockOut) {
+      records[index].originalClockOut = records[index].clockOut;
+    }
+    records[index].clockOut = clockOut;
+  }
 
   // clockIn+clockOut 있으면 자동 계산 우선
   if (records[index].clockIn && records[index].clockOut) {

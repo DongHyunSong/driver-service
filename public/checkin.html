@@ -330,43 +330,72 @@
       renderStatus(st.status, todayRec);
     }
 
+    function getLocation() {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) { resolve(null); return; }
+        navigator.geolocation.getCurrentPosition(
+          pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+          ()  => resolve(null),
+          { timeout: 8000, maximumAge: 0, enableHighAccuracy: true }
+        );
+      });
+    }
+
     async function doCheckIn() {
       if(!confirm('Do you want to clock in?')) return;
+      const btnIn = document.getElementById('btn-checkin');
+      btnIn.disabled = true;
+      btnIn.innerHTML = '<span style="font-size:1.5rem">📡</span><span>Getting location...</span>';
       try {
+        const location = await getLocation();
         const res = await fetch('/api/attendance/checkin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ driverId })
+          body: JSON.stringify({ driverId, location })
         });
         const data = await res.json();
         if (res.ok) {
-          showResult('success', '✅ Clocked in successfully!');
+          showResult('success', location ? '✅ Clocked in! Location saved.' : '✅ Clocked in! (Location unavailable)');
           await loadTodayStatus();
         } else {
           showResult('error', '⚠️ ' + data.error);
+          btnIn.disabled = false;
         }
       } catch (e) {
         showResult('error', '⚠️ Network error occurred.');
+        btnIn.disabled = false;
+      } finally {
+        btnIn.innerHTML = '<span style="font-size:1.5rem">📍</span><span>Clock In</span>';
       }
     }
 
     async function doCheckOut() {
       if(!confirm('Do you want to clock out?')) return;
+      const btnOut = document.getElementById('btn-checkout');
+      btnOut.disabled = true;
+      btnOut.innerHTML = '<span style="font-size:1.5rem">📡</span><span>Getting location...</span>';
       try {
+        const location = await getLocation();
         const res = await fetch('/api/attendance/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ driverId })
+          body: JSON.stringify({ driverId, location })
         });
         const data = await res.json();
         if (res.ok) {
-          showResult('success', `✅ Clocked out! (Today: ${data.record.hoursWorked} hours)`);
+          showResult('success', location
+            ? `✅ Clocked out! (Today: ${data.record.hoursWorked} hours) Location saved.`
+            : `✅ Clocked out! (Today: ${data.record.hoursWorked} hours)`);
           await loadTodayStatus();
         } else {
           showResult('error', '⚠️ ' + data.error);
+          btnOut.disabled = false;
         }
       } catch (e) {
         showResult('error', '⚠️ Network error occurred.');
+        btnOut.disabled = false;
+      } finally {
+        btnOut.innerHTML = '<span style="font-size:1.5rem">✅</span><span>Clock Out</span>';
       }
     }
 

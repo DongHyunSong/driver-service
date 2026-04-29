@@ -4,6 +4,25 @@
  */
 
 // ========================
+// Time Input Auto-Formatter
+// ========================
+/**
+ * 숫자만 입력받아 HH:mm 형식으로 자동 변환
+ * 예: "0400" → "04:00", "17" → "17", "1730" → "17:30"
+ */
+function formatTimeInput(el) {
+  // 숫자와 콜론만 허용
+  let raw = el.value.replace(/[^\d:]/g, '');
+  // 콜론 제거 후 순수 숫자 추출
+  const digits = raw.replace(/:/g, '');
+  let formatted = digits;
+  if (digits.length >= 3) {
+    formatted = digits.slice(0, 2) + ':' + digits.slice(2, 4);
+  }
+  el.value = formatted;
+}
+
+// ========================
 // Tab Switching
 // ========================
 function switchEmployerTab(tabId) {
@@ -303,7 +322,17 @@ async function showAttendanceModal(dateStr) {
   const dayType = rec?.dayType || auto;
 
   // 시간 포맷 헬퍼
-  const toLocalTime = iso => iso ? new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+  const toLocalTime = iso => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+  };
+  // 입력 필드 표시용: HH:mm
+  const getLocalTimeInputStr = iso => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
 
   const html = `
     <div class="mb-md flex-between">
@@ -314,11 +343,17 @@ async function showAttendanceModal(dateStr) {
       <div class="info-rows mb-md" style="background:var(--bg-input);border-radius:10px;overflow:hidden">
         <div class="info-row" style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:var(--font-sm)">
           <span style="color:var(--text-muted)">출근</span>
-          <span>${rec.clockIn ? new Date(rec.clockIn).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '직접 입력'}</span>
+          <span style="display:flex;align-items:center;gap:6px">
+            <span>${rec.originalClockIn ? `${toLocalTime(rec.originalClockIn)} <span style="color:var(--text-muted);font-size:0.9em;">(수동 ${toLocalTime(rec.clockIn)})</span>` : (rec.clockIn ? toLocalTime(rec.clockIn) : '직접 입력')}</span>
+            ${rec.clockInLocation ? `<a href="https://www.google.com/maps?q=${rec.clockInLocation.lat},${rec.clockInLocation.lng}" target="_blank" style="font-size:0.85em;color:var(--accent-primary);text-decoration:none" title="구글맵에서 보기">📍</a>` : ''}
+          </span>
         </div>
-        <div class="info-row" style="padding:10px 14px;font-size:var(--font-sm)">
+        <div class="info-row" style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:var(--font-sm)">
           <span style="color:var(--text-muted)">퇴근</span>
-          <span>${rec.clockOut ? new Date(rec.clockOut).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '퇴근 전'}</span>
+          <span style="display:flex;align-items:center;gap:6px">
+            <span>${rec.originalClockOut ? `${toLocalTime(rec.originalClockOut)} <span style="color:var(--text-muted);font-size:0.9em;">(수동 ${toLocalTime(rec.clockOut)})</span>` : (rec.clockOut ? toLocalTime(rec.clockOut) : '퇴근 전')}</span>
+            ${rec.clockOutLocation ? `<a href="https://www.google.com/maps?q=${rec.clockOutLocation.lat},${rec.clockOutLocation.lng}" target="_blank" style="font-size:0.85em;color:var(--accent-primary);text-decoration:none" title="구글맵에서 보기">📍</a>` : ''}
+          </span>
         </div>
         <div class="info-row" style="padding:10px 14px;font-size:var(--font-sm)">
           <span style="color:var(--text-muted)">총 근무시간</span>
@@ -329,9 +364,17 @@ async function showAttendanceModal(dateStr) {
     
     ${AppState.currentUser.isAdmin ? `
       <div class="form-group">
-        <label class="form-label">총 근무시간 (직접 수정)</label>
+        <label class="form-label" style="margin-bottom:6px">출퇴근 시간 수정</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="modal-clockin" class="form-input" value="${getLocalTimeInputStr(rec?.clockIn)}" placeholder="HH:mm" inputmode="numeric" maxlength="5" oninput="formatTimeInput(this)" style="flex:1;min-width:0;font-size:12px;padding:6px 6px;text-align:center;letter-spacing:1px">
+          <span style="color:var(--text-muted);flex-shrink:0;font-size:12px">→</span>
+          <input type="text" id="modal-clockout" class="form-input" value="${getLocalTimeInputStr(rec?.clockOut)}" placeholder="HH:mm" inputmode="numeric" maxlength="5" oninput="formatTimeInput(this)" style="flex:1;min-width:0;font-size:12px;padding:6px 6px;text-align:center;letter-spacing:1px">
+        </div>
+        <div class="text-muted mt-sm" style="font-size:var(--font-xs)">출/퇴근 시간을 수정하면 근무시간이 자동 계산됩니다.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">총 근무시간 (수동 입력시)</label>
         <input type="number" id="modal-hours" class="form-input" value="${rec?.hoursWorked || 8}" min="0" max="24" step="0.5">
-        <div class="text-muted mt-sm" style="font-size:var(--font-xs)">8시간 초과분은 자동으로 OT 적용</div>
       </div>
       <div class="form-group">
         <label class="form-label">메모</label>
@@ -343,7 +386,7 @@ async function showAttendanceModal(dateStr) {
         </button>
         ${rec ? `<button class="btn btn-danger" onclick="deleteAttendance('${rec.id}')">삭제</button>` : ''}
       </div>
-    ` : ''}`;
+    ` : ''}` ;
 
   showModal(rec ? '근무 기록 확인' : '근무 기록', html);
 }
@@ -354,6 +397,14 @@ function showManualAttendanceModal() {
     <div class="form-group">
       <label class="form-label">날짜</label>
       <input type="date" id="manual-date" class="form-input" value="${today}">
+    </div>
+    <div class="form-group">
+      <label class="form-label" style="margin-bottom:6px">출퇴근 시간</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="modal-clockin" class="form-input" placeholder="HH:mm" inputmode="numeric" maxlength="5" oninput="formatTimeInput(this)" style="flex:1;min-width:0;font-size:12px;padding:6px 6px;text-align:center;letter-spacing:1px">
+        <span style="color:var(--text-muted);flex-shrink:0;font-size:12px">→</span>
+        <input type="text" id="modal-clockout" class="form-input" placeholder="HH:mm" inputmode="numeric" maxlength="5" oninput="formatTimeInput(this)" style="flex:1;min-width:0;font-size:12px;padding:6px 6px;text-align:center;letter-spacing:1px">
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">총 근무시간</label>
@@ -369,23 +420,57 @@ function showManualAttendanceModal() {
 
 async function saveManualAttendance() {
   const date        = document.getElementById('manual-date').value;
+  const clockInTime = document.getElementById('modal-clockin').value;
+  const clockOutTime = document.getElementById('modal-clockout').value;
   const hoursWorked = parseFloat(document.getElementById('modal-hours').value);
   const note        = document.getElementById('modal-note').value;
+
+  // HH:mm 또는 HH:mm:ss 텍스트 직접 입력 파싱
+  const toISO = (dateStr, timeStr) => {
+    if (!timeStr || !timeStr.trim()) return undefined;
+    const t = timeStr.trim();
+    const parts = t.split(':');
+    const normalized = parts.length === 2 ? `${t}:00` : t;
+    const d = new Date(`${dateStr}T${normalized}`);
+    if (isNaN(d.getTime())) { showToast(`시간 형식이 올바르지 않습니다: ${t} (예: 17:30:00)`, 'error'); return null; }
+    return d.toISOString();
+  };
+
+  const clockIn  = toISO(date, clockInTime);
+  const clockOut = toISO(date, clockOutTime);
+
   try {
-    await api('/attendance', { method: 'POST', body: { driverId: AppState.selectedDriverId, date, hoursWorked, note } });
+    await api('/attendance', { method: 'POST', body: { driverId: AppState.selectedDriverId, date, clockIn, clockOut, hoursWorked, note } });
     closeModal(); showToast('저장되었습니다.', 'success');
     renderAttendanceCalendar();
   } catch (e) { showToast('저장 실패: ' + e.message, 'error'); }
 }
 
 async function saveAttendance(dateStr, recordId) {
-  const hoursWorked = parseFloat(document.getElementById('modal-hours').value);
-  const note        = document.getElementById('modal-note').value;
+  const clockInTime  = document.getElementById('modal-clockin')?.value;
+  const clockOutTime = document.getElementById('modal-clockout')?.value;
+  const hoursWorked  = parseFloat(document.getElementById('modal-hours').value);
+  const note         = document.getElementById('modal-note').value;
+
+  // HH:mm 또는 HH:mm:ss 텍스트 직접 입력 파싱
+  const toISO = (date, timeStr) => {
+    if (!timeStr || !timeStr.trim()) return undefined;
+    const t = timeStr.trim();
+    const parts = t.split(':');
+    const normalized = parts.length === 2 ? `${t}:00` : t;
+    const d = new Date(`${date}T${normalized}`);
+    if (isNaN(d.getTime())) { showToast(`시간 형식이 올바르지 않습니다: ${t} (예: 17:30:00)`, 'error'); return null; }
+    return d.toISOString();
+  };
+
+  const clockIn  = toISO(dateStr, clockInTime);
+  const clockOut = toISO(dateStr, clockOutTime);
+
   try {
     if (recordId) {
-      await api(`/attendance/${recordId}`, { method: 'PUT', body: { hoursWorked, note } });
+      await api(`/attendance/${recordId}`, { method: 'PUT', body: { clockIn, clockOut, hoursWorked, note } });
     } else {
-      await api('/attendance', { method: 'POST', body: { driverId: AppState.selectedDriverId, date: dateStr, hoursWorked, note } });
+      await api('/attendance', { method: 'POST', body: { driverId: AppState.selectedDriverId, date: dateStr, clockIn, clockOut, hoursWorked, note } });
     }
     closeModal(); showToast('저장되었습니다.', 'success');
     renderAttendanceCalendar();

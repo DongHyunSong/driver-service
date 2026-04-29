@@ -652,6 +652,20 @@ a:hover { color: var(--accent-primary-hover); }
   color: var(--text-muted);
 }
 
+/* time input: 24시간 형식 강제 */
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  direction: ltr;
+}
+/* Chrome/Edge에서 AM/PM 파트 숨기기 */
+input[type="time"]::-webkit-datetime-edit-ampm-field {
+  display: none;
+}
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+
 /* --- Modal --- */
 .modal, .modal-overlay {
   display: none;
