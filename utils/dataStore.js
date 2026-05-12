@@ -4,13 +4,45 @@
  */
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { Storage } = require('@google-cloud/storage');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const CONFIG_DIR = path.join(__dirname, '..', 'config');
+const isGCP = !!process.env.GOOGLE_CLOUD_PROJECT;
+// GCP App Engine 환경에서는 파일 시스템이 읽기 전용이므로 쓰기 가능한 /tmp 디렉토리 사용
+const BASE_DIR = isGCP ? os.tmpdir() : path.join(__dirname, '..');
+const DATA_DIR = path.join(BASE_DIR, 'data');
+const CONFIG_DIR = path.join(BASE_DIR, 'config');
+
+// 디렉토리가 없으면 생성 (/tmp 초기화 대비)
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
+
+// GCP 환경일 경우 배포된 원본 파일들을 /tmp 로 초기 복사 (최초 실행 시)
+if (isGCP) {
+  const repoDataDir = path.join(__dirname, '..', 'data');
+  const repoConfigDir = path.join(__dirname, '..', 'config');
+  const filesToCopy = [
+    { name: 'employers.json', src: repoDataDir, dest: DATA_DIR },
+    { name: 'drivers.json', src: repoDataDir, dest: DATA_DIR },
+    { name: 'attendance.json', src: repoDataDir, dest: DATA_DIR },
+    { name: 'payments.json', src: repoDataDir, dest: DATA_DIR },
+    { name: 'schedules.json', src: repoDataDir, dest: DATA_DIR },
+    { name: 'pay-settings.json', src: repoConfigDir, dest: CONFIG_DIR }
+  ];
+  for (const f of filesToCopy) {
+    const destPath = path.join(f.dest, f.name);
+    if (!fs.existsSync(destPath)) {
+      const srcPath = path.join(f.src, f.name);
+      if (fs.existsSync(srcPath)) {
+        fs.copyFileSync(srcPath, destPath);
+      } else {
+        fs.writeFileSync(destPath, f.name.includes('settings') ? '{}' : '[]', 'utf-8');
+      }
+    }
+  }
+}
 
 let storage, bucket;
-const isGCP = process.env.GOOGLE_CLOUD_PROJECT;
 const bucketName = process.env.GCS_BUCKET || (isGCP ? `${process.env.GOOGLE_CLOUD_PROJECT}.appspot.com` : null);
 
 if (bucketName) {
@@ -62,11 +94,12 @@ function writeJSON(filename, data, isConfig = false) {
   const dir = isConfig ? CONFIG_DIR : DATA_DIR;
   const filePath = path.join(dir, filename);
   try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    const jsonString = JSON.stringify(data, null, 2);
+    fs.writeFileSync(filePath, jsonString, 'utf-8');
     
     // GCS 비동기 업로드 (배포 환경에서 데이터 유지용)
     if (bucket) {
-      bucket.upload(filePath, { destination: filename }).catch(err => {
+      bucket.file(filename).save(jsonString).catch(err => {
         console.error(`[GCS] ${filename} 업로드 실패:`, err.message);
       });
     }
