@@ -1,0 +1,11 @@
+# Driver Payment Project Rules
+
+These rules must be strictly followed by all contributors and AI agents working on this project.
+
+## 1. Data Persistence & Migration
+- **Never Erase User Data:** Any data generated or entered by drivers/employers (e.g., `attendance.json`, `schedules.json`, `drivers.json`, `employers.json`, `payments.json`) MUST be preserved.
+- **Migration Over Overwrite:** If the schema of the data files changes, the application must include logic to gracefully migrate old data structures to the new schema without data loss. Destructive initialization or accidental overwriting of the `data/` directory contents is strictly prohibited. Code changes and deployment must never break or erase the accumulated working records.
+
+## 2. English-Only Implementation
+- **Code Comments:** All code comments, docstrings, variable names, and explanations within the source code must be written exclusively in English.
+- **User Interface (UI):** All UI components, HTML text, buttons, alerts, and toasts presented to the user must be implemented in English. (The project has been migrated from dual-language to English-only, and this standard must be maintained moving forward.)

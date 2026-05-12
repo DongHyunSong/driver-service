@@ -572,44 +572,82 @@ async function showScheduleModal(dateStr) {
     schedules = all.filter(s => s.date === dateStr);
   } catch (e) {}
 
+  window.currentDaySchedules = schedules;
+
   const listHtml = schedules.length > 0 ? schedules.map(s => `
-    <div class="list-item" style="padding:10px; border:1px solid var(--border); border-radius:8px; margin-bottom:10px;">
+    <div class="list-item" style="padding:10px; border:1px solid var(--border); border-radius:8px; margin-bottom:10px; cursor:pointer;" onclick="populateScheduleForm('${s.id}')">
       <div class="list-info">
         <div class="list-name">${s.time} - ${s.pickupPerson}</div>
         <div class="list-meta">${s.pickupLocation} → ${s.destination}</div>
       </div>
-      <button class="btn-icon" onclick="deleteSchedule('${s.id}')">❌</button>
+      <button class="btn-icon" onclick="event.stopPropagation(); deleteSchedule('${s.id}')">❌</button>
     </div>
   `).join('') : '<div class="text-muted" style="text-align:center;padding:10px;">No schedules</div>';
 
   showModal(`${dateStr} Schedule`, `
-    <div style="max-height: 200px; overflow-y:auto; margin-bottom:16px;">
-      ${listHtml}
+    <div style="padding-bottom: 80px;">
+      <div style="max-height: 200px; overflow-y:auto; margin-bottom:16px;">
+        ${listHtml}
+      </div>
+      <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;">
+      <div class="section-title" id="sch-form-title">Add Schedule</div>
+      <div class="form-group">
+        <label class="form-label">Time</label>
+        <input type="time" id="sch-time" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pickup Person</label>
+        <input type="text" id="sch-person" class="form-input" placeholder="e.g. Boss, Family">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pickup Location</label>
+        <input type="text" id="sch-location" class="form-input" placeholder="Start Point">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Destination</label>
+        <input type="text" id="sch-destination" class="form-input" placeholder="End Point">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note</label>
+        <input type="text" id="sch-note" class="form-input" placeholder="Remarks">
+      </div>
+      <button id="sch-submit-btn" class="btn btn-primary btn-block mt-md" onclick="saveSchedule('${dateStr}')">Register</button>
     </div>
-    <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;">
-    <div class="section-title">Add Schedule</div>
-    <div class="form-group">
-      <label class="form-label">Time</label>
-      <input type="time" id="sch-time" class="form-input" required>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Pickup Person</label>
-      <input type="text" id="sch-person" class="form-input" placeholder="e.g. Boss, Family">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Pickup Location</label>
-      <input type="text" id="sch-location" class="form-input" placeholder="Start Point">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Destination</label>
-      <input type="text" id="sch-destination" class="form-input" placeholder="End Point">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Note</label>
-      <input type="text" id="sch-note" class="form-input" placeholder="Remarks">
-    </div>
-    <button class="btn btn-primary btn-block mt-md" onclick="saveSchedule('${dateStr}')">Register</button>
   `);
+}
+
+window.populateScheduleForm = function(id) {
+  const s = window.currentDaySchedules.find(x => x.id === id);
+  if(!s) return;
+  document.getElementById('sch-time').value = s.time;
+  document.getElementById('sch-person').value = s.pickupPerson || '';
+  document.getElementById('sch-location').value = s.pickupLocation || '';
+  document.getElementById('sch-destination').value = s.destination || '';
+  document.getElementById('sch-note').value = s.note || '';
+  
+  const btn = document.getElementById('sch-submit-btn');
+  btn.textContent = 'Update';
+  btn.onclick = () => updateSchedule(id, s.date);
+  document.getElementById('sch-form-title').textContent = 'Edit Schedule';
+};
+
+async function updateSchedule(id, dateStr) {
+  const time = document.getElementById('sch-time').value;
+  const pickupPerson = document.getElementById('sch-person').value;
+  const pickupLocation = document.getElementById('sch-location').value;
+  const destination = document.getElementById('sch-destination').value;
+  const note = document.getElementById('sch-note').value;
+  if (!time) return showToast('Please enter time.', 'error');
+
+  try {
+    const body = { date: dateStr, time, pickupPerson, pickupLocation, destination, note };
+    await api(`/schedules/${id}`, { method: 'PUT', body });
+    closeModal();
+    showToast('Schedule updated.', 'success');
+    renderEmployerSchedule();
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
 }
 
 async function saveSchedule(dateStr) {

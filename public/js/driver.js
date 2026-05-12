@@ -24,9 +24,11 @@ async function renderDriverAttendance() {
   const content = document.getElementById('driver-content');
   const user = AppState.currentUser;
 
-  let attendance = [];
+  let attendance = [], schedules = [];
   try {
-    attendance = await api(`/attendance?driverId=${user.id}&month=${AppState.currentMonth}`);
+    const p1 = api(`/attendance?driverId=${user.id}&month=${AppState.currentMonth}`);
+    const p2 = api(`/schedules?driverId=${user.id}&month=${AppState.currentMonth}`);
+    [attendance, schedules] = await Promise.all([p1, p2]);
   } catch (e) {}
 
   // Build calendar
@@ -67,11 +69,15 @@ async function renderDriverAttendance() {
     }
     const hoursWorked = record && record.hoursWorked ? `<div style="font-size: 10px; opacity: 0.8; margin-top: 4px;">(${record.hoursWorked}h)</div>` : '';
 
+    const daySchedules = schedules.filter(s => s.date === dateStr);
+    const schBadge = daySchedules.length > 0 ? `<div style="font-size: 10px; background: var(--accent2); color: white; border-radius: 4px; padding: 2px 4px; margin-top: 2px;">${daySchedules.length} Sch</div>` : '';
+
     calendarHtml += `
-      <div class="${classes}">
+      <div class="${classes}" style="cursor:pointer;" onclick="showDriverScheduleModal('${dateStr}')">
         <span>${d}</span>
         ${hoursWorked}
         ${otBadge}
+        ${schBadge}
       </div>
     `;
   }
@@ -213,8 +219,10 @@ async function showDriverScheduleModal(dateStr) {
   `).join('') : '<div class="text-muted" style="text-align:center;padding:10px;">No schedules for this date.</div>';
 
   showModal(`${dateStr} Schedule`, `
-    <div style="max-height: 300px; overflow-y:auto; margin-bottom:16px;">
-      ${listHtml}
+    <div style="padding-bottom: 80px;">
+      <div style="max-height: 300px; overflow-y:auto; margin-bottom:16px;">
+        ${listHtml}
+      </div>
     </div>
   `);
 }
