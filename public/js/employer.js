@@ -32,6 +32,7 @@ function switchEmployerTab(tabId) {
   switch (tabId) {
     case 'emp-dashboard':  renderEmployerDashboard(); break;
     case 'emp-attendance': renderAttendanceCalendar(); break;
+    case 'emp-schedule':   renderEmployerSchedule(); break;
   }
 }
 
@@ -223,7 +224,7 @@ async function renderAttendanceCalendar() {
     const [year, month] = AppState.currentMonth.split('-').map(Number);
     const firstDay     = new Date(year, month - 1, 1).getDay();
     const daysInMonth  = new Date(year, month, 0).getDate();
-    const today        = new Date().toISOString().slice(0, 10);
+    const today        = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
     const weekDays     = ['일','월','화','수','목','금','토'];
 
     let calHtml = weekDays.map(d => `<div class="calendar-weekday">${d}</div>`).join('');
@@ -392,7 +393,7 @@ async function showAttendanceModal(dateStr) {
 }
 
 function showManualAttendanceModal() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
   showModal('수동 출근 입력', `
     <div class="form-group">
       <label class="form-label">날짜</label>
@@ -485,4 +486,165 @@ async function deleteAttendance(recordId) {
   } catch (e) { showToast('삭제 실패: ' + e.message, 'error'); }
 }
 
+// ========================
+// Schedule Management (Employer)
+// ========================
+async function renderEmployerSchedule() {
+  const content = document.getElementById('employer-content');
+  const driverSel = await renderDriverSelector('renderEmployerSchedule');
 
+  if (!AppState.selectedDriverId) {
+    content.innerHTML = '<div class="empty-state"><p>먼저 드라이버를 선택해주세요. (Select a driver first.)</p></div>';
+    return;
+  }
+
+  let schedules = [], driverName = '';
+  try {
+    schedules = await api(`/schedules?driverId=${AppState.selectedDriverId}&month=${AppState.currentMonth}`);
+    const drv = await api(`/drivers/${AppState.selectedDriverId}`);
+    driverName = drv.name;
+  } catch (e) {}
+
+  const [year, month] = AppState.currentMonth.split('-').map(Number);
+  const firstDay = new Date(year, month - 1, 1).getDay();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+  const weekDays = ['일','월','화','수','목','금','토'];
+
+  let calHtml = weekDays.map(d => `<div class="calendar-weekday">${d}</div>`).join('');
+  for (let i = 0; i < firstDay; i++) calHtml += '<div class="calendar-day empty"></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const daySchedules = schedules.filter(s => s.date === dateStr);
+    const isToday = dateStr === today;
+    const isSun = new Date(year, month - 1, d).getDay() === 0;
+    const isHol = AppState.settings?.philippineHolidays?.includes(dateStr);
+    
+    let cls = 'calendar-day';
+    if (isToday) cls += ' today';
+    if (isSun || isHol) cls += ' holiday';
+    if (daySchedules.length > 0) cls += ' worked';
+
+    const badge = daySchedules.length > 0 ? `<div style="font-size:10px; margin-top:2px; background:var(--accent); color:white; border-radius:4px; padding:2px 4px;">${daySchedules.length}건</div>` : '';
+
+    calHtml += `
+      <div class="${cls}" onclick="showScheduleModal('${dateStr}')">
+        <span>${d}</span>${badge}
+      </div>`;
+  }
+
+  content.innerHTML = `
+    <div style="animation:fadeInUp .4s ease">
+      ${driverSel}
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">${driverName} 일정 관리 (Schedule)</div>
+          </div>
+        </div>
+        <div class="calendar-header">
+          <button class="btn btn-ghost btn-sm" onclick="prevMonth();renderEmployerSchedule()">◀</button>
+          <span class="calendar-title">${formatMonthYear(AppState.currentMonth)}</span>
+          <button class="btn btn-ghost btn-sm" onclick="nextMonth();renderEmployerSchedule()">▶</button>
+        </div>
+        <div class="calendar-grid">${calHtml}</div>
+      </div>
+      
+      <div class="section-title mt-lg">이번 달 전체 일정 (Monthly Schedules)</div>
+      ${schedules.length === 0 ? '<div class="empty-state"><p>등록된 일정이 없습니다. (No schedules)</p></div>' : ''}
+      ${schedules.map(s => `
+        <div class="list-item" onclick="showScheduleModal('${s.date}')">
+          <div class="list-avatar" style="font-size:12px; background:var(--accent);">${s.date.slice(8)}일</div>
+          <div class="list-info">
+            <div class="list-name">${s.time} - ${s.pickupPerson}</div>
+            <div class="list-meta">${s.pickupLocation} → ${s.destination}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+async function showScheduleModal(dateStr) {
+  let schedules = [];
+  try {
+    const all = await api(`/schedules?driverId=${AppState.selectedDriverId}&month=${dateStr.slice(0, 7)}`);
+    schedules = all.filter(s => s.date === dateStr);
+  } catch (e) {}
+
+  const listHtml = schedules.length > 0 ? schedules.map(s => `
+    <div class="list-item" style="padding:10px; border:1px solid var(--border); border-radius:8px; margin-bottom:10px;">
+      <div class="list-info">
+        <div class="list-name">${s.time} - ${s.pickupPerson}</div>
+        <div class="list-meta">${s.pickupLocation} → ${s.destination}</div>
+      </div>
+      <button class="btn-icon" onclick="deleteSchedule('${s.id}')">❌</button>
+    </div>
+  `).join('') : '<div class="text-muted" style="text-align:center;padding:10px;">등록된 일정이 없습니다. (No schedules)</div>';
+
+  showModal(`${dateStr} 일정 (Schedule)`, `
+    <div style="max-height: 200px; overflow-y:auto; margin-bottom:16px;">
+      ${listHtml}
+    </div>
+    <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;">
+    <div class="section-title">새 일정 추가 (Add Schedule)</div>
+    <div class="form-group">
+      <label class="form-label">시간 (Time)</label>
+      <input type="time" id="sch-time" class="form-input" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label">픽업 대상 (Pickup Person)</label>
+      <input type="text" id="sch-person" class="form-input" placeholder="e.g. Boss, Family">
+    </div>
+    <div class="form-group">
+      <label class="form-label">픽업 장소 (Pickup Location)</label>
+      <input type="text" id="sch-location" class="form-input" placeholder="Start Point">
+    </div>
+    <div class="form-group">
+      <label class="form-label">목적지 (Destination)</label>
+      <input type="text" id="sch-destination" class="form-input" placeholder="End Point">
+    </div>
+    <div class="form-group">
+      <label class="form-label">메모 (Note)</label>
+      <input type="text" id="sch-note" class="form-input" placeholder="Remarks">
+    </div>
+    <button class="btn btn-primary btn-block mt-md" onclick="saveSchedule('${dateStr}')">일정 등록 (Register)</button>
+  `);
+}
+
+async function saveSchedule(dateStr) {
+  const time = document.getElementById('sch-time').value;
+  const pickupPerson = document.getElementById('sch-person').value;
+  const pickupLocation = document.getElementById('sch-location').value;
+  const destination = document.getElementById('sch-destination').value;
+  const note = document.getElementById('sch-note').value;
+
+  if (!time) return showToast('시간을 입력해주세요. (Please enter time.)', 'error');
+
+  try {
+    const body = { driverId: AppState.selectedDriverId, date: dateStr, time, pickupPerson, pickupLocation, destination, note };
+    const s = await api('/schedules', { method: 'POST', body });
+    
+    if (confirm('구글 캘린더에도 이 일정을 등록하시겠습니까? (Add to Google Calendar?)')) {
+      window.open(getGoogleCalendarUrl(s), '_blank');
+    }
+
+    closeModal();
+    showToast('일정이 등록되었습니다. (Schedule registered.)', 'success');
+    renderEmployerSchedule();
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+async function deleteSchedule(id) {
+  if (!confirm('일정을 삭제하시겠습니까? (Delete this schedule?)')) return;
+  try {
+    await api(`/schedules/${id}`, { method: 'DELETE' });
+    closeModal();
+    showToast('삭제되었습니다. (Deleted.)', 'success');
+    renderEmployerSchedule();
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}

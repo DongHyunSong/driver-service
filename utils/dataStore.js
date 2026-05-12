@@ -26,7 +26,7 @@ if (bucketName) {
  */
 async function syncFromCloud() {
   if (!bucket) return;
-  const files = ['employers.json', 'drivers.json', 'attendance.json', 'payments.json', 'pay-settings.json'];
+  const files = ['employers.json', 'drivers.json', 'attendance.json', 'payments.json', 'pay-settings.json', 'schedules.json'];
   for (const file of files) {
     const isConfig = file === 'pay-settings.json';
     const dir = isConfig ? CONFIG_DIR : DATA_DIR;

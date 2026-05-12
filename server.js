@@ -34,6 +34,7 @@ app.use('/api/drivers', require('./routes/drivers'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/schedules', require('./routes/schedules'));
 
 // QR 체크인 페이지 (SPA fallback 전에 등록)
 app.use('/checkin', require('./routes/checkin'));

@@ -322,7 +322,7 @@
       const stRes = await fetch(`/api/attendance/status/${driverId}`);
       const st = await stRes.json();
 
-      const today = new Date().toISOString().slice(0, 10);
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
       const attRes = await fetch(`/api/attendance?driverId=${driverId}&month=${today.slice(0, 7)}`);
       const recs = await attRes.json();
       const todayRec = recs.find(r => r.date === today) || null;
@@ -405,7 +405,7 @@
       listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted);">Loading...</div>';
       
       try {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
         const res = await fetch(`/api/attendance?driverId=${driverId}&month=${today.slice(0, 7)}`);
         const recs = await res.json();
         

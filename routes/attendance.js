@@ -41,7 +41,7 @@ router.post('/checkin', (req, res) => {
   if (!driver) return res.status(404).json({ error: 'Driver not found' });
 
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
   const records = readJSON('attendance.json');
 
   // 오늘 기록 확인
@@ -118,7 +118,7 @@ router.post('/checkout', (req, res) => {
   if (!driverId) return res.status(400).json({ error: 'driverId는 필수입니다.' });
 
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
   const records = readJSON('attendance.json');
   const idx = records.findIndex(r => r.driverId === driverId && r.date === today);
 
@@ -154,7 +154,7 @@ router.post('/checkout', (req, res) => {
 
 // ── GET /api/attendance/status/:driverId  (오늘 현재 상태) ────────────
 router.get('/status/:driverId', (req, res) => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
   const records = readJSON('attendance.json');
   const record = records.find(r => r.driverId === req.params.driverId && r.date === today);
 

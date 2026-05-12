@@ -11,7 +11,7 @@ const AppState = {
   currentRole: null,      // 'employer' | 'driver'
   settings: null,         // pay-settings
   selectedDriverId: null,
-  currentMonth: new Date().toISOString().slice(0, 7), // YYYY-MM
+  currentMonth: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }).slice(0, 7), // YYYY-MM
   attendanceView: 'calendar', // 'calendar' | 'table'
 };
 
@@ -485,4 +485,21 @@ function updatePinDots() {
   dots.forEach((dot, i) => {
     dot.classList.toggle('filled', i < len);
   });
+}
+
+// ========================
+// Google Calendar Integration
+// ========================
+function getGoogleCalendarUrl(schedule) {
+  const [year, month, day] = schedule.date.split('-');
+  const [hour, minute] = schedule.time.split(':');
+  const start = `${year}${month}${day}T${hour}${minute}00`;
+  const endHour = String((parseInt(hour) + 2) % 24).padStart(2, '0');
+  const end = `${year}${month}${day}T${endHour}${minute}00`;
+
+  const text = encodeURIComponent(`Schedule: Pickup ${schedule.pickupPerson}`);
+  const details = encodeURIComponent(`Pickup Person: ${schedule.pickupPerson}\nPickup Location: ${schedule.pickupLocation}\nDestination: ${schedule.destination}\nNote: ${schedule.note || ''}`);
+  const location = encodeURIComponent(schedule.pickupLocation || schedule.destination);
+
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${start}/${end}&details=${details}&location=${location}&ctz=Asia/Manila`;
 }

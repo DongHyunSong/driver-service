@@ -13,6 +13,7 @@ function switchDriverTab(tabId) {
 
   switch (tabId) {
     case 'drv-attendance': renderDriverAttendance(); break;
+    case 'drv-schedule': renderDriverSchedule(); break;
   }
 }
 
@@ -32,7 +33,7 @@ async function renderDriverAttendance() {
   const [year, month] = AppState.currentMonth.split('-').map(Number);
   const firstDay = new Date(year, month - 1, 1).getDay();
   const daysInMonth = new Date(year, month, 0).getDate();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
 
   const attendanceMap = {};
   attendance.forEach(r => { attendanceMap[r.date] = r; });
@@ -121,3 +122,99 @@ async function renderDriverAttendance() {
   `;
 }
 
+// ========================
+// Schedule Management (Driver)
+// ========================
+async function renderDriverSchedule() {
+  const content = document.getElementById('driver-content');
+  const user = AppState.currentUser;
+
+  let schedules = [];
+  try {
+    schedules = await api(`/schedules?driverId=${user.id}&month=${AppState.currentMonth}`);
+  } catch (e) {}
+
+  const [year, month] = AppState.currentMonth.split('-').map(Number);
+  const firstDay = new Date(year, month - 1, 1).getDay();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  let calHtml = weekdays.map(d => `<div class="calendar-weekday">${d}</div>`).join('');
+  for (let i = 0; i < firstDay; i++) calHtml += '<div class="calendar-day empty"></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const daySchedules = schedules.filter(s => s.date === dateStr);
+    const isToday = dateStr === today;
+    const isSun = new Date(year, month - 1, d).getDay() === 0;
+    const isHol = AppState.settings?.philippineHolidays?.includes(dateStr);
+
+    let cls = 'calendar-day';
+    if (isToday) cls += ' today';
+    if (isSun || isHol) cls += ' holiday';
+    if (daySchedules.length > 0) cls += ' worked';
+
+    const badge = daySchedules.length > 0 ? `<div style="font-size:10px; margin-top:2px; background:var(--accent); color:white; border-radius:4px; padding:2px 4px;">${daySchedules.length}</div>` : '';
+
+    calHtml += `
+      <div class="${cls}" onclick="showDriverScheduleModal('${dateStr}')">
+        <span>${d}</span>${badge}
+      </div>`;
+  }
+
+  content.innerHTML = `
+    <div style="animation: fadeInUp 0.4s ease">
+      <div class="card">
+        <div class="calendar-header">
+          <button class="btn btn-ghost btn-sm" onclick="prevMonth(); renderDriverSchedule();">◀</button>
+          <span class="calendar-title">${formatMonthYearEn(AppState.currentMonth)}</span>
+          <button class="btn btn-ghost btn-sm" onclick="nextMonth(); renderDriverSchedule();">▶</button>
+        </div>
+        <div class="calendar-grid">
+          ${calHtml}
+        </div>
+      </div>
+
+      <div class="section-title mt-lg">Upcoming Schedules</div>
+      ${schedules.length === 0 ? '<div class="empty-state"><p>No schedules for this month.</p></div>' : ''}
+      ${schedules.filter(s => s.date >= today).map(s => `
+        <div class="list-item" onclick="showDriverScheduleModal('${s.date}')">
+          <div class="list-avatar" style="font-size:12px; background:var(--accent);">${s.date.slice(8)}</div>
+          <div class="list-info">
+            <div class="list-name">${s.time} - ${s.pickupPerson || 'Pickup'}</div>
+            <div class="list-meta">${s.pickupLocation || 'N/A'} → ${s.destination || 'N/A'}</div>
+            ${s.note ? `<div style="font-size:11px; color:var(--text-muted); margin-top:4px;">📝 ${s.note}</div>` : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+async function showDriverScheduleModal(dateStr) {
+  let schedules = [];
+  try {
+    const all = await api(`/schedules?driverId=${AppState.currentUser.id}&month=${dateStr.slice(0, 7)}`);
+    schedules = all.filter(s => s.date === dateStr);
+  } catch (e) {}
+
+  const listHtml = schedules.length > 0 ? schedules.map(s => `
+    <div class="list-item" style="padding:10px; border:1px solid var(--border); border-radius:8px; margin-bottom:10px;">
+      <div class="list-info">
+        <div class="list-name">${s.time} - ${s.pickupPerson || 'Pickup'}</div>
+        <div class="list-meta">From: ${s.pickupLocation || 'N/A'}<br>To: ${s.destination || 'N/A'}</div>
+        ${s.note ? `<div style="font-size:11px; color:var(--text-muted); margin-top:4px;">📝 ${s.note}</div>` : ''}
+      </div>
+      <a href="${getGoogleCalendarUrl(s)}" target="_blank" class="btn btn-sm btn-secondary" style="text-decoration:none; text-align:center;">
+        Google<br>Calendar
+      </a>
+    </div>
+  `).join('') : '<div class="text-muted" style="text-align:center;padding:10px;">No schedules for this date.</div>';
+
+  showModal(`${dateStr} Schedule`, `
+    <div style="max-height: 300px; overflow-y:auto; margin-bottom:16px;">
+      ${listHtml}
+    </div>
+  `);
+}
