@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="필리핀 운전기사 출퇴근 관리 서비스 - Driver Attendance Management">
+  <meta name="description" content="Driver Attendance Management Service">
   <meta name="theme-color" content="#6366f1">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -92,21 +92,19 @@
             </svg>
           </div>
           <h1 class="login-title">Driver Attendance</h1>
-          <p class="login-subtitle">출퇴근 관리 서비스</p>
+          <p class="login-subtitle">Attendance Management Service</p>
         </div>
-
-
 
         <form id="login-form" class="login-form" onsubmit="handleLogin(event)">
           <div class="input-group">
-            <label class="input-label" id="user-label-text" style="text-align:center;margin-bottom:16px;">계정 선택</label>
+            <label class="input-label" id="user-label-text" style="text-align:center;margin-bottom:16px;">Select Account</label>
             <div id="user-list" class="user-list">
               <!-- Users will be populated here by JS -->
             </div>
             <input type="hidden" id="user-select" required>
           </div>
           <div class="pin-input-group">
-            <label class="pin-label" id="pin-label-text">PIN 입력</label>
+            <label class="pin-label" id="pin-label-text">Enter PIN</label>
             <div class="pin-dots" id="pin-dots">
               <span class="pin-dot"></span>
               <span class="pin-dot"></span>
@@ -117,7 +115,7 @@
           </div>
           <div id="login-error" class="login-error"></div>
           <button type="submit" id="login-btn" class="btn btn-primary btn-lg btn-block">
-            <span>로그인</span>
+            <span>Login</span>
           </button>
         </form>
 
@@ -129,7 +127,7 @@
     <div id="register-modal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 id="modal-title">등록</h3>
+          <h3 id="modal-title">Register</h3>
           <button class="close-btn" onclick="closeAuthModal('register-modal')">&times;</button>
         </div>
         <form id="register-form" onsubmit="handleRegister(event)">
@@ -137,7 +135,7 @@
             <!-- Dynamic fields -->
           </div>
           <div class="modal-footer">
-            <button type="submit" class="btn btn-primary btn-block">등록하기</button>
+            <button type="submit" class="btn btn-primary btn-block">Register</button>
           </div>
         </form>
       </div>
@@ -147,10 +145,10 @@
     <div id="employer-screen" class="screen">
       <header class="app-header">
         <div class="header-left">
-          <h2 class="header-title">대시보드</h2>
+          <h2 class="header-title">Dashboard</h2>
           <span class="header-user" id="employer-name"></span>
         </div>
-        <button class="btn-icon" onclick="handleLogout()" title="로그아웃">
+        <button class="btn-icon" onclick="handleLogout()" title="Logout">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
         </button>
       </header>
@@ -158,7 +156,7 @@
       <nav class="tab-nav" id="employer-tabs">
         <button class="tab-btn active" data-tab="emp-dashboard" onclick="switchEmployerTab('emp-dashboard')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-          <span>드라이버</span>
+          <span>Drivers</span>
         </button>
         <button class="tab-btn" data-tab="emp-attendance" onclick="switchEmployerTab('emp-attendance')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>

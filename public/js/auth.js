@@ -14,9 +14,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   const pinLabel = document.getElementById('pin-label-text');
   const loginBtn = document.getElementById('login-btn');
 
-  if (userLabel) userLabel.textContent = '고용인 선택';
-  if (pinLabel) pinLabel.textContent = 'PIN 입력';
-  if (loginBtn) loginBtn.querySelector('span').textContent = '로그인';
+  if (userLabel) userLabel.textContent = 'Select Employer';
+  if (pinLabel) pinLabel.textContent = 'Enter PIN';
+  if (loginBtn) loginBtn.querySelector('span').textContent = 'Login';
 
   await loadUsersForRole('employer');
 
@@ -93,11 +93,11 @@ async function handleLogin(e) {
   const errorEl = document.getElementById('login-error');
 
   if (!userId) {
-    errorEl.textContent = '사용자를 선택해주세요.';
+    errorEl.textContent = 'Please select a user.';
     return;
   }
   if (!pin || pin.length < 4) {
-    errorEl.textContent = 'PIN 4자리를 입력해주세요.';
+    errorEl.textContent = 'Please enter a 4-digit PIN.';
     return;
   }
 
@@ -121,7 +121,7 @@ async function handleLogin(e) {
       renderEmployerDashboard();
     }
   } catch (err) {
-    errorEl.textContent = '잘못된 PIN입니다.';
+    errorEl.textContent = 'Invalid PIN.';
     const form = document.getElementById('login-form');
     if (form) {
       form.style.animation = 'none';
@@ -156,13 +156,13 @@ function showRegisterModal(role) {
   
   if (!modal || !fields) return;
 
-  title.textContent = role === 'employer' ? '고용인 추가' : '드라이버 추가';
+  title.textContent = role === 'employer' ? 'Add Employer' : 'Add Driver';
   
   let html = `
     <input type="hidden" id="reg-role" value="${role}">
     <div class="form-group">
-      <label class="form-label">${role === 'employer' ? '이름' : 'Name'}</label>
-      <input type="text" id="reg-name" class="form-input" placeholder="${role === 'employer' ? '홍길동' : 'John Doe'}" required>
+      <label class="form-label">Name</label>
+      <input type="text" id="reg-name" class="form-input" placeholder="John Doe" required>
     </div>
     <div class="form-group">
       <label class="form-label">PIN (4 digits)</label>
@@ -173,7 +173,7 @@ function showRegisterModal(role) {
   if (role === 'employer') {
     html += `
       <div class="form-group">
-        <label class="form-label">이메일 (선택)</label>
+        <label class="form-label">Email (Optional)</label>
         <input type="email" id="reg-email" class="form-input" placeholder="email@example.com">
       </div>
     `;
@@ -247,14 +247,14 @@ async function handleRegister(e) {
       method: 'POST',
       body
     });
-    showToast(role === 'employer' ? '관리자가 등록되었습니다.' : '드라이버가 등록되었습니다.', 'success');
+    showToast(role === 'employer' ? 'Employer registered.' : 'Driver registered.', 'success');
     closeAuthModal('register-modal');
     loadUsersForRole(selectedRole); // Refresh login dropdown
     if (typeof renderEmployerDashboard === 'function' && AppState.currentRole === 'employer') {
       renderEmployerDashboard();
     }
   } catch (err) {
-    showToast(err.message || '등록 실패', 'error');
+    showToast(err.message || 'Registration failed.', 'error');
   }
 }
 

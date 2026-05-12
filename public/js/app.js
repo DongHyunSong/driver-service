@@ -36,13 +36,11 @@ function buildMonthDays(month, attendance, settings) {
     const isHol   = holidays.includes(dateStr) || dow === 0;
     const rec     = attMap[dateStr] || null;
 
-    const DOW_KO = ['일','월','화','수','목','금','토'];
     const DOW_EN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
     days.push({
       dateStr,
       dow,
-      dowKo: DOW_KO[dow],
       dowEn: DOW_EN[dow],
       isHoliday: isHol,
       autoType: isHol ? 'holiday' : 'weekday',
@@ -56,14 +54,14 @@ function buildMonthDays(month, attendance, settings) {
  * HTML 테이블 빌드 (고용인 한국어 / 드라이버 영어 공용)
  * @param {string} lang 'ko' | 'en'
  */
-function buildAttendanceTableHTML(month, attendance, settings, lang = 'ko') {
+function buildAttendanceTableHTML(month, attendance, settings, lang = 'en') {
   const isKo  = lang === 'ko';
   const days  = buildMonthDays(month, attendance, settings);
 
   let totalWorked = 0, totalHours = 0, totalOt = 0, totalBasePay = 0, totalOtPay = 0;
 
   const rows = days.map(day => {
-    const { dateStr, dowKo, dowEn, isHoliday, autoType, rec } = day;
+    const { dateStr, dowEn, isHoliday, autoType, rec } = day;
     const worked   = rec?.worked ?? false;
     const dayType  = rec?.dayType ?? autoType;
     const isHolRow = dayType === 'holiday';
@@ -86,17 +84,15 @@ function buildAttendanceTableHTML(month, attendance, settings, lang = 'ko') {
     }
 
     const rowCls = !worked ? 'row-absent' : isHolRow ? 'row-holiday' : 'row-worked';
-    const dtLabel = isKo
-      ? (isHolRow ? '휴일' : '평일')
-      : (isHolRow ? 'Holiday' : 'Weekday');
+    const dtLabel = 'Holiday'
 
     return `
       <tr class="${rowCls}">
         <td class="col-date ${isHolRow ? 'col-holiday' : ''}">${dateStr}</td>
-        <td>${isKo ? dowKo : dowEn}</td>
+        <td>${dowEn}</td>
         <td><span class="badge ${isHolRow ? 'badge-error' : 'badge-info'}" style="font-size:10px">${dtLabel}</span></td>
-        <td>${clockIn || (worked ? (isKo ? '직접입력' : 'Manual') : '—')}</td>
-        <td>${clockOut || (worked && rec?.clockIn ? (isKo ? '퇴근전' : 'Active') : '—')}</td>
+        <td>${clockIn || (worked ? 'Manual' : '—')}</td>
+        <td>${clockOut || (worked && rec?.clockIn ? 'Active' : '—')}</td>
         <td>${worked ? hours.toFixed(1) + 'h' : '—'}</td>
         <td class="${ot > 0 ? 'col-ot' : ''}">${worked ? ot.toFixed(1) + 'h' : '—'}</td>
         <td>${worked ? '₱' + basePay.toLocaleString() : '—'}</td>
@@ -109,8 +105,8 @@ function buildAttendanceTableHTML(month, attendance, settings, lang = 'ko') {
   const tfoot = `
     <tfoot>
       <tr>
-        <td colspan="2" style="text-align:left">${isKo ? '합계' : 'Total'}</td>
-        <td>${totalWorked}${isKo ? '일' : ' days'}</td>
+        <td colspan="2" style="text-align:left">Total</td>
+        <td>${totalWorked} days</td>
         <td colspan="2"></td>
         <td>${totalHours.toFixed(1)}h</td>
         <td>${totalOt.toFixed(1)}h</td>
@@ -122,9 +118,7 @@ function buildAttendanceTableHTML(month, attendance, settings, lang = 'ko') {
     </tfoot>`;
 
   const th = (t) => `<th>${t}</th>`;
-  const headers = isKo
-    ? ['날짜','요일','구분','출근','퇴근','근무시간','OT','기본급','OT급여','합계','메모']
-    : ['Date','Day','Type','Clock In','Clock Out','Hours','OT','Base Pay','OT Pay','Total','Note'];
+  const headers = ['Date','Day','Type','Clock In','Clock Out','Hours','OT','Base Pay','OT Pay','Total','Note'];
 
   return `
     <div class="att-table-wrap">
@@ -139,18 +133,15 @@ function buildAttendanceTableHTML(month, attendance, settings, lang = 'ko') {
 /**
  * Excel(.xlsx) Export — SheetJS
  */
-function exportAttendanceToExcel(month, attendance, settings, driverName, lang = 'ko') {
-  const isKo = lang === 'ko';
+function exportAttendanceToExcel(month, attendance, settings, driverName, lang = 'en') {
   const days  = buildMonthDays(month, attendance, settings);
 
-  const headers = isKo
-    ? ['날짜','요일','구분','출근시각','퇴근시각','근무시간(h)','OT(h)','메모']
-    : ['Date','Day','Type','Clock In','Clock Out','Hours Worked','OT Hours','Note'];
+  const headers = ['Date','Day','Type','Clock In','Clock Out','Hours Worked','OT Hours','Note'];
 
   const sheetData = [headers];
   let totalWorked=0, totalHours=0, totalOt=0;
 
-  days.forEach(({ dateStr, dowKo, dowEn, isHoliday, autoType, rec }) => {
+  days.forEach(({ dateStr, dowEn, isHoliday, autoType, rec }) => {
     const worked  = rec?.worked ?? false;
     const dayType = rec?.dayType ?? autoType;
     const isHolRow = dayType === 'holiday';
@@ -161,7 +152,7 @@ function exportAttendanceToExcel(month, attendance, settings, driverName, lang =
 
     if (worked) { totalWorked++; totalHours+=hours; totalOt+=ot; }
 
-    const dtLabel = isKo ? (isHolRow ? '휴일' : '평일') : (isHolRow ? 'Holiday' : 'Weekday');
+    const dtLabel = isHolRow ? 'Holiday' : 'Weekday';
 
     let clockInStr = '';
     let clockOutStr = '';
@@ -173,7 +164,7 @@ function exportAttendanceToExcel(month, attendance, settings, driverName, lang =
         const endDate = new Date(`2000-01-01T08:00:00`);
         endDate.setMinutes(endDate.getMinutes() + hours * 60);
         clockOutStr = endDate.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false });
-        noteStr = '개인입력' + (noteStr ? ' - ' + noteStr : '');
+        noteStr = 'Manual' + (noteStr ? ' - ' + noteStr : '');
       } else {
         clockInStr = fmtTime(rec.clockIn);
         clockOutStr = fmtTime(rec.clockOut);
@@ -182,7 +173,7 @@ function exportAttendanceToExcel(month, attendance, settings, driverName, lang =
 
     sheetData.push([
       dateStr,
-      isKo ? dowKo : dowEn,
+      dowEn,
       dtLabel,
       clockInStr,
       clockOutStr,
@@ -193,9 +184,9 @@ function exportAttendanceToExcel(month, attendance, settings, driverName, lang =
   });
 
   // 합계 행
-  const totalLabel = isKo ? '합계' : 'Total';
+  const totalLabel = 'Total';
   sheetData.push([
-    totalLabel, '', `${totalWorked}${isKo?'일':' days'}`, '', '',
+    totalLabel, '', `${totalWorked} days`, '', '',
     parseFloat(totalHours.toFixed(2)),
     parseFloat(totalOt.toFixed(2)),
     ''
@@ -227,11 +218,10 @@ function exportAttendanceToExcel(month, attendance, settings, driverName, lang =
 /**
  * CSV Export (Date, Check-in, Check-out Only)
  */
-function exportAttendanceToCSV(month, attendance, settings, driverName, lang = 'ko') {
-  const isKo = lang === 'ko';
+function exportAttendanceToCSV(month, attendance, settings, driverName, lang = 'en') {
   const days  = buildMonthDays(month, attendance, settings);
 
-  const headers = isKo ? ['날짜', '출근시간', '퇴근시간'] : ['Date', 'Check-in', 'Check-out'];
+  const headers = ['Date', 'Check-in', 'Check-out'];
   const sheetData = [headers];
 
   days.forEach(({ dateStr, rec }) => {
@@ -332,12 +322,14 @@ function formatCurrency(amount) {
 
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function formatMonthYear(monthStr) {
-  const [y, m] = monthStr.split('-');
-  return `${y}년 ${parseInt(m)}월`;
+function formatMonthYear(str) {
+  if (!str) return '';
+  const [y, m] = str.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${months[parseInt(m)-1]} ${y}`;
 }
 
 function formatMonthYearEn(monthStr) {
