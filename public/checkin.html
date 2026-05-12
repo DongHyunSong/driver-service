@@ -193,6 +193,17 @@
       from { opacity: 0; transform: translateY(20px); }
       to   { opacity: 1; transform: translateY(0); }
     }
+
+    /* Calendar Styles */
+    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .calendar-weekday { text-align: center; font-size: 0.75rem; color: var(--muted); font-weight: 600; padding: 4px; }
+    .calendar-day { background: rgba(255,255,255,0.05); border-radius: 8px; padding: 8px 4px; text-align: center; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 48px; }
+    .calendar-day.empty { background: transparent; cursor: default; }
+    .calendar-day.today { border: 1px solid var(--accent); color: var(--accent); }
+    .calendar-day.holiday { color: var(--error); }
+    .calendar-day:active { transform: scale(0.95); }
+    .sch-badge { font-size: 10px; background: var(--accent2); color: white; border-radius: 4px; padding: 2px 0; margin-top: 4px; width: 100%; text-align: center; }
   </style>
 </head>
 <body>
@@ -240,6 +251,13 @@
           <span>📅</span> My Attendance Log (This Month)
         </button>
       </div>
+
+      <div class="driver-card" style="padding: 16px;">
+        <div style="font-weight:700; margin-bottom:12px; font-size:1.1rem; text-align:left;">My Schedule</div>
+        <div id="schedule-calendar">
+          <div style="text-align:center; color:var(--muted); padding:20px;">Loading schedule...</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -247,7 +265,7 @@
   <div class="modal" id="history-modal">
     <div class="modal-content">
       <div class="modal-header">
-        <span>Attendance History</span>
+        <span id="history-modal-title">Attendance History</span>
         <button class="close-btn" onclick="closeHistory()">&times;</button>
       </div>
       <div class="modal-body" id="history-list">
@@ -310,6 +328,7 @@
         document.getElementById('driver-name-el').textContent = drv.name;
 
         await loadTodayStatus();
+        loadSchedules(); // load schedules for the calendar
 
         document.getElementById('loading').style.display = 'none';
         document.getElementById('main').style.display    = 'block';
@@ -400,6 +419,7 @@
     }
 
     async function showHistory() {
+      document.getElementById('history-modal-title').textContent = 'Attendance History';
       document.getElementById('history-modal').classList.add('active');
       const listEl = document.getElementById('history-list');
       listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted);">Loading...</div>';
@@ -435,6 +455,88 @@
       } catch (e) {
         listEl.innerHTML = '<div style="padding:20px; text-align:center; color:var(--error);">Failed to load records.</div>';
       }
+    }
+
+    let currentSchMonth = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }).slice(0, 7);
+    let allSchedules = [];
+
+    async function loadSchedules() {
+      try {
+        const res = await fetch(`/api/schedules?driverId=${driverId}&month=${currentSchMonth}`);
+        allSchedules = await res.json();
+        renderScheduleCalendar();
+      } catch (e) {
+        document.getElementById('schedule-calendar').innerHTML = '<div style="color:var(--error);text-align:center;">Failed to load schedules.</div>';
+      }
+    }
+
+    function renderScheduleCalendar() {
+      const [year, month] = currentSchMonth.split('-').map(Number);
+      const firstDay = new Date(year, month - 1, 1).getDay();
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+
+      const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      let html = '<div class="calendar-header">';
+      html += `<button class="btn" style="width:auto;padding:6px 12px;font-size:0.85rem;" onclick="changeSchMonth(-1)">◀</button>`;
+      html += `<span style="font-weight:700;font-size:1.1rem;">${year}-${String(month).padStart(2,'0')}</span>`;
+      html += `<button class="btn" style="width:auto;padding:6px 12px;font-size:0.85rem;" onclick="changeSchMonth(1)">▶</button>`;
+      html += '</div>';
+
+      html += '<div class="calendar-grid">';
+      weekdays.forEach(d => { html += `<div class="calendar-weekday">${d}</div>`; });
+      for (let i = 0; i < firstDay; i++) {
+        html += '<div class="calendar-day empty"></div>';
+      }
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const isToday = dateStr === today;
+        const isSun = new Date(year, month - 1, d).getDay() === 0;
+
+        const daySchedules = allSchedules.filter(s => s.date === dateStr);
+        let classes = 'calendar-day';
+        if (isToday) classes += ' today';
+        if (isSun) classes += ' holiday';
+
+        const badge = daySchedules.length > 0 ? `<div class="sch-badge">${daySchedules.length}</div>` : '';
+        html += `<div class="${classes}" onclick="showDaySchedule('${dateStr}')"><span>${d}</span>${badge}</div>`;
+      }
+      html += '</div>';
+      document.getElementById('schedule-calendar').innerHTML = html;
+    }
+
+    function changeSchMonth(delta) {
+      let [y, m] = currentSchMonth.split('-').map(Number);
+      m += delta;
+      if (m < 1) { m = 12; y--; }
+      else if (m > 12) { m = 1; y++; }
+      currentSchMonth = `${y}-${String(m).padStart(2,'0')}`;
+      document.getElementById('schedule-calendar').innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px;">Loading schedule...</div>';
+      loadSchedules();
+    }
+
+    function showDaySchedule(dateStr) {
+      const daySchedules = allSchedules.filter(s => s.date === dateStr);
+      const listEl = document.getElementById('history-list');
+      
+      let html = '';
+      if (daySchedules.length === 0) {
+        html = '<div style="padding:20px; text-align:center; color:var(--muted);">No schedules for this date.</div>';
+      } else {
+        daySchedules.forEach(s => {
+          html += \`
+            <div class="history-item" style="flex-direction:column; align-items:flex-start;">
+              <div style="font-weight:700; margin-bottom:6px; font-size:1.1rem; color:var(--text);">\${s.time} - \${s.pickupPerson || 'Pickup'}</div>
+              <div style="font-size:0.95rem; color:var(--text); line-height:1.4;">From: \${s.pickupLocation || 'N/A'}<br>To: \${s.destination || 'N/A'}</div>
+              \${s.note ? \`<div style="font-size:0.85rem; color:var(--muted); margin-top:8px; padding:6px; background:rgba(255,255,255,0.05); border-radius:6px;">📝 \${s.note}</div>\` : ''}
+            </div>
+          \`;
+        });
+      }
+      
+      document.getElementById('history-modal-title').textContent = `${dateStr} Schedule`;
+      listEl.innerHTML = html;
+      document.getElementById('history-modal').classList.add('active');
     }
 
     function closeHistory() {
