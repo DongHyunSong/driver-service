@@ -198,7 +198,7 @@
     .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
     .calendar-weekday { text-align: center; font-size: 0.75rem; color: var(--muted); font-weight: 600; padding: 4px; }
-    .calendar-day { background: rgba(255,255,255,0.05); border-radius: 8px; padding: 8px 4px; text-align: center; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 48px; }
+    .calendar-day { background: rgba(255,255,255,0.05); border-radius: 8px; padding: 8px 4px; text-align: center; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 48px; user-select: none; -webkit-user-select: none; }
     .calendar-day.empty { background: transparent; cursor: default; }
     .calendar-day.today { border: 1px solid var(--accent); color: var(--accent); }
     .calendar-day.holiday { color: var(--error); }
