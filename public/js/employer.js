@@ -172,7 +172,10 @@ function showAddDriverModal() {
       <label class="form-label">PIN (4 digits)</label>
       <input type="text" id="new-drv-pin" class="form-input" maxlength="4" inputmode="numeric" placeholder="0000">
     </div>
-    <button class="btn btn-primary btn-block mt-md" onclick="addDriver()">Register</button>
+    <div class="flex gap-sm mt-md">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" onclick="addDriver()">Register</button>
+    </div>
   `);
 }
 
@@ -382,6 +385,7 @@ async function showAttendanceModal(dateStr) {
         <input type="text" id="modal-note" class="form-input" value="${rec?.note || ''}" placeholder="Remarks">
       </div>
       <div class="flex gap-sm">
+        <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">Cancel</button>
         <button class="btn btn-primary" style="flex:1" onclick="saveAttendance('${dateStr}','${rec?.id||''}')">
           ${rec ? 'Update' : 'Save'}
         </button>
@@ -415,7 +419,10 @@ function showManualAttendanceModal() {
       <label class="form-label">Note</label>
       <input type="text" id="modal-note" class="form-input" placeholder="Remarks">
     </div>
-    <button class="btn btn-primary btn-block mt-md" onclick="saveManualAttendance()">Save</button>
+    <div class="flex gap-sm mt-md">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveManualAttendance()">Save</button>
+    </div>
   `);
 }
 
@@ -611,7 +618,10 @@ async function showScheduleModal(dateStr) {
         <label class="form-label">Note</label>
         <input type="text" id="sch-note" class="form-input" placeholder="Remarks">
       </div>
-      <button id="sch-submit-btn" class="btn btn-primary btn-block mt-md" onclick="saveSchedule('${dateStr}')">Register</button>
+      <div class="flex gap-sm mt-md">
+        <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">Cancel</button>
+        <button id="sch-submit-btn" class="btn btn-primary" style="flex:1" onclick="saveSchedule('${dateStr}')">Register</button>
+      </div>
     </div>
   `);
 }
