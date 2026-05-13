@@ -59,9 +59,9 @@ router.post('/send-test', async (req, res) => {
   if (subs.length === 0) return res.status(404).json({ error: 'No subscriptions found.' });
 
   const payload = JSON.stringify({
-    title: '🔔 Notification Test',
-    body: 'Schedule notifications are enabled!',
-    icon: '/icons/icon-192.png',
+    title: '🔔 Schedule Alerts Enabled!',
+    body:  'You will receive reminders 2 hours and 30 minutes before each scheduled pickup.',
+    icon:  '/icons/icon-192.png',
     badge: '/icons/icon-192.png'
   });
 

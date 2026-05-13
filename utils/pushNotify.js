@@ -59,13 +59,19 @@ function checkAndSendScheduleNotifications() {
     const key2h = `${sch.id}:2h`;
     if (diffMinutes >= 119 && diffMinutes < 121 && !sentNotifications.has(key2h)) {
       sentNotifications.add(key2h);
+
+      const person   = sch.pickupPerson   || 'Passenger';
+      const from     = sch.pickupLocation || '—';
+      const to       = sch.destination    || '—';
+      const note     = sch.note ? `  📝 ${sch.note}` : '';
+
       sendToDriver(sch.driverId, {
-        title: '📅 Schedule in 2 Hours',
-        body: `${sch.time} — ${sch.pickupPerson || 'Pickup'}\n${sch.pickupLocation || ''} → ${sch.destination || ''}`,
-        icon: '/icons/icon-192.png',
+        title: `🕑 Pickup in 2 hours — ${person}`,
+        body:  `📍 ${from} → ${to}\n🕐 ${sch.time}  |  Today${note}`,
+        icon:  '/icons/icon-192.png',
         badge: '/icons/icon-192.png',
-        tag: key2h,
-        data: { scheduleId: sch.id, date: sch.date, time: sch.time }
+        tag:   key2h,
+        data:  { scheduleId: sch.id, date: sch.date, time: sch.time }
       });
     }
 
@@ -73,13 +79,19 @@ function checkAndSendScheduleNotifications() {
     const key30m = `${sch.id}:30m`;
     if (diffMinutes >= 29 && diffMinutes < 31 && !sentNotifications.has(key30m)) {
       sentNotifications.add(key30m);
+
+      const person   = sch.pickupPerson   || 'Passenger';
+      const from     = sch.pickupLocation || '—';
+      const to       = sch.destination    || '—';
+      const note     = sch.note ? `  📝 ${sch.note}` : '';
+
       sendToDriver(sch.driverId, {
-        title: '⏰ Schedule in 30 Minutes!',
-        body: `${sch.time} — ${sch.pickupPerson || 'Pickup'}\n${sch.pickupLocation || ''} → ${sch.destination || ''}`,
-        icon: '/icons/icon-192.png',
+        title: `⚠️ Pickup in 30 minutes — ${person}`,
+        body:  `📍 ${from} → ${to}\n🕐 ${sch.time}  |  Depart soon!${note}`,
+        icon:  '/icons/icon-192.png',
         badge: '/icons/icon-192.png',
-        tag: key30m,
-        data: { scheduleId: sch.id, date: sch.date, time: sch.time }
+        tag:   key30m,
+        data:  { scheduleId: sch.id, date: sch.date, time: sch.time }
       });
     }
   }
