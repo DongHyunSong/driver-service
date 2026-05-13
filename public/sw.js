@@ -1,4 +1,4 @@
-const CACHE_NAME = 'drvpay-v3';
+const CACHE_NAME = 'drvpay-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -57,6 +57,44 @@ self.addEventListener('fetch', (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         return response;
       });
+    })
+  );
+});
+
+// ── Push Notification Handler ──────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  let data = { title: 'Driver Attendance', body: 'You have a new notification.' };
+  try {
+    if (event.data) data = event.data.json();
+  } catch (e) {}
+
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/icons/icon-192.png',
+    badge: data.badge || '/icons/icon-192.png',
+    tag: data.tag || 'schedule-notify',
+    renotify: true,
+    requireInteraction: false,
+    data: data.data || {}
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+// ── Notification Click Handler ─────────────────────────────────────────────
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const driverId = event.notification.data?.driverId;
+  const targetUrl = driverId ? `/checkin/${driverId}` : '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes('/checkin/') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
     })
   );
 });

@@ -35,6 +35,7 @@ app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/schedules', require('./routes/schedules'));
+app.use('/api/push',      require('./routes/push'));
 
 // QR 체크인 페이지 (SPA fallback 전에 등록)
 app.use('/checkin', require('./routes/checkin'));
@@ -45,9 +46,11 @@ app.get('*', (req, res) => {
 });
 
 const { syncFromCloud } = require('./utils/dataStore');
+const { startPushScheduler } = require('./utils/pushNotify');
 
 syncFromCloud().then(() => {
   app.listen(PORT, () => {
     console.log(`🚗 Driver Payment Server running on http://localhost:${PORT}`);
+    startPushScheduler();
   });
 });

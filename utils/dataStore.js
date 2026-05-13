@@ -27,6 +27,7 @@ if (isGCP) {
     { name: 'attendance.json', src: repoDataDir, dest: DATA_DIR },
     { name: 'payments.json', src: repoDataDir, dest: DATA_DIR },
     { name: 'schedules.json', src: repoDataDir, dest: DATA_DIR },
+    { name: 'push_subscriptions.json', src: repoDataDir, dest: DATA_DIR },
     { name: 'pay-settings.json', src: repoConfigDir, dest: CONFIG_DIR }
   ];
   for (const f of filesToCopy) {
@@ -58,7 +59,7 @@ if (bucketName) {
  */
 async function syncFromCloud() {
   if (!bucket) return;
-  const files = ['employers.json', 'drivers.json', 'attendance.json', 'payments.json', 'pay-settings.json', 'schedules.json'];
+  const files = ['employers.json', 'drivers.json', 'attendance.json', 'payments.json', 'pay-settings.json', 'schedules.json', 'push_subscriptions.json'];
   for (const file of files) {
     const isConfig = file === 'pay-settings.json';
     const dir = isConfig ? CONFIG_DIR : DATA_DIR;
