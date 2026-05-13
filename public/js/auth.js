@@ -118,6 +118,11 @@ async function handleLogin(e) {
       if (data.user.driverIds && data.user.driverIds.length > 0) {
         AppState.selectedDriverId = data.user.driverIds[0];
       }
+
+      // Show admin tab for admin users
+      const adminTabBtn = document.getElementById('tab-btn-admin');
+      if (adminTabBtn) adminTabBtn.style.display = data.user.isAdmin ? '' : 'none';
+
       renderEmployerDashboard();
     }
   } catch (err) {

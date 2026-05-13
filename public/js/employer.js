@@ -29,10 +29,18 @@ function switchEmployerTab(tabId) {
   document.querySelectorAll('#employer-tabs .tab-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tabId);
   });
+
+  // Show admin tab only for Admin users
+  const adminTabBtn = document.getElementById('tab-btn-admin');
+  if (adminTabBtn) {
+    adminTabBtn.style.display = AppState.currentUser?.isAdmin ? '' : 'none';
+  }
+
   switch (tabId) {
     case 'emp-dashboard':  renderEmployerDashboard(); break;
     case 'emp-attendance': renderAttendanceCalendar(); break;
     case 'emp-schedule':   renderEmployerSchedule(); break;
+    case 'emp-admin':      renderAdminPanel(); break;
   }
 }
 
@@ -694,5 +702,241 @@ async function deleteSchedule(id) {
     renderEmployerSchedule();
   } catch (e) {
     showToast('Error: ' + e.message, 'error');
+  }
+}
+
+// ========================
+// Admin Panel — Data Export / Import
+// ========================
+function renderAdminPanel() {
+  if (!AppState.currentUser?.isAdmin) {
+    document.getElementById('employer-content').innerHTML =
+      '<div class="empty-state"><p>Admin access required.</p></div>';
+    return;
+  }
+
+  // Show admin tab
+  const adminTabBtn = document.getElementById('tab-btn-admin');
+  if (adminTabBtn) adminTabBtn.style.display = '';
+
+  const content = document.getElementById('employer-content');
+  content.innerHTML = `
+    <div style="animation:fadeInUp .4s ease">
+
+      <!-- Header -->
+      <div class="section-title" style="margin-bottom:4px;">⚙️ Admin Panel</div>
+      <div style="color:var(--text-muted); font-size:var(--font-sm); margin-bottom:var(--space-lg);">Manage app data. Only visible to Admin account.</div>
+
+      <!-- Export Card -->
+      <div class="card" style="margin-bottom:var(--space-md);">
+        <div class="card-header">
+          <div>
+            <div class="card-title">📦 Export Data</div>
+            <div class="card-subtitle">Download a full backup of all data as JSON</div>
+          </div>
+        </div>
+        <div style="padding: var(--space-md);">
+          <div style="background:var(--bg-input); border-radius:var(--radius-md); padding:12px 16px; margin-bottom:var(--space-md); font-size:var(--font-sm); color:var(--text-muted); line-height:1.6;">
+            Includes: <strong style="color:var(--text-primary)">Attendance records, Schedules, Driver list, Employer list, Payments, Pay settings</strong>
+          </div>
+          <button class="btn btn-primary btn-block" onclick="exportAllData()">
+            ⬇️ Download Backup (.json)
+          </button>
+        </div>
+      </div>
+
+      <!-- Import Card -->
+      <div class="card" style="margin-bottom:var(--space-md);">
+        <div class="card-header">
+          <div>
+            <div class="card-title">📂 Import Data</div>
+            <div class="card-subtitle">Restore from a previously exported backup file</div>
+          </div>
+        </div>
+        <div style="padding: var(--space-md);">
+          <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:var(--radius-md); padding:12px 16px; margin-bottom:var(--space-md); font-size:var(--font-sm); color:var(--error); line-height:1.6;">
+            ⚠️ <strong>Warning:</strong> Import will <strong>overwrite</strong> all existing data with the backup. This cannot be undone.
+          </div>
+
+          <!-- Drop Zone -->
+          <div id="drop-zone" style="
+            border: 2px dashed var(--border-active);
+            border-radius: var(--radius-lg);
+            padding: 32px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all .2s;
+            margin-bottom: var(--space-md);
+            background: var(--bg-input);
+          " onclick="document.getElementById('import-file-input').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)">
+            <div style="font-size:2rem; margin-bottom:8px;">📁</div>
+            <div id="drop-zone-label" style="font-weight:600; color:var(--text-muted); font-size:var(--font-sm);">Tap or drag a backup .json file here</div>
+          </div>
+          <input type="file" id="import-file-input" accept=".json,application/json" style="display:none" onchange="handleFileSelected(this.files[0])">
+
+          <!-- Preview (hidden until file selected) -->
+          <div id="import-preview" style="display:none; background:var(--bg-input); border-radius:var(--radius-md); padding:14px 16px; margin-bottom:var(--space-md); font-size:var(--font-sm);"></div>
+
+          <button id="import-btn" class="btn btn-danger btn-block" onclick="importAllData()" disabled style="opacity:0.5;">
+            ⬆️ Restore from Backup
+          </button>
+        </div>
+      </div>
+
+      <!-- Danger Zone -->
+      <div style="color:var(--text-muted); font-size:var(--font-xs); text-align:center; padding: var(--space-md);">Admin PIN is required for all export/import operations.</div>
+    </div>
+  `;
+}
+
+// Selected file stored for import
+let _importFileData = null;
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').style.borderColor = 'var(--accent-primary)';
+  document.getElementById('drop-zone').style.background = 'rgba(99,102,241,0.08)';
+}
+
+function handleDragLeave(e) {
+  document.getElementById('drop-zone').style.borderColor = 'var(--border-active)';
+  document.getElementById('drop-zone').style.background = 'var(--bg-input)';
+}
+
+function handleFileDrop(e) {
+  e.preventDefault();
+  handleDragLeave(e);
+  const file = e.dataTransfer.files[0];
+  if (file) handleFileSelected(file);
+}
+
+function handleFileSelected(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed.data) {
+        showToast('Invalid backup file: missing data field.', 'error');
+        return;
+      }
+      _importFileData = parsed;
+
+      // Show preview
+      const d = parsed.data;
+      const exportedDate = parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleString('en-PH') : 'Unknown';
+      const previewEl = document.getElementById('import-preview');
+      previewEl.style.display = 'block';
+      previewEl.innerHTML = `
+        <div style="font-weight:700; margin-bottom:10px; color:var(--text-primary);">📋 Backup Preview</div>
+        <div style="color:var(--text-muted); margin-bottom:10px;">Exported: ${exportedDate}</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          ${[
+            ['Employers',   (d.employers  ||[]).length],
+            ['Drivers',     (d.drivers    ||[]).length],
+            ['Attendance',  (d.attendance ||[]).length],
+            ['Schedules',   (d.schedules  ||[]).length],
+            ['Payments',    (d.payments   ||[]).length],
+            ['Pay Settings', d.paySettings ? '✓' : '—'],
+          ].map(([label, val]) => `
+            <div style="background:var(--bg-card); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between;">
+              <span style="color:var(--text-muted);">${label}</span>
+              <strong>${val}</strong>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      // Update drop zone label
+      document.getElementById('drop-zone-label').textContent = `✅ ${file.name} selected`;
+      document.getElementById('drop-zone-label').style.color = 'var(--success)';
+
+      // Enable import button
+      const importBtn = document.getElementById('import-btn');
+      importBtn.disabled = false;
+      importBtn.style.opacity = '1';
+    } catch (err) {
+      showToast('Failed to parse file: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function exportAllData() {
+  try {
+    showToast('Preparing export...', 'info');
+    const res = await fetch('/api/admin/export', {
+      headers: { 'X-Admin-Pin': '0000' }
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      showToast('Export failed: ' + err.error, 'error');
+      return;
+    }
+    const blob = await res.blob();
+    const today = new Date().toISOString().slice(0, 10);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `driver-attendance-backup-${today}.json`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+    showToast('Backup downloaded successfully!', 'success');
+  } catch (e) {
+    showToast('Export error: ' + e.message, 'error');
+  }
+}
+
+async function importAllData() {
+  if (!_importFileData) {
+    showToast('Please select a backup file first.', 'error');
+    return;
+  }
+  const exportedAt = _importFileData.exportedAt
+    ? new Date(_importFileData.exportedAt).toLocaleString('en-PH')
+    : 'Unknown';
+  const confirmed = confirm(
+    `⚠️ RESTORE FROM BACKUP?\n\nBackup date: ${exportedAt}\n\nThis will OVERWRITE all current data. Are you sure?`
+  );
+  if (!confirmed) return;
+
+  try {
+    const importBtn = document.getElementById('import-btn');
+    importBtn.disabled = true;
+    importBtn.textContent = '⏳ Restoring...';
+
+    // Build FormData with the JSON file
+    const blob = new Blob([JSON.stringify(_importFileData)], { type: 'application/json' });
+    const formData = new FormData();
+    formData.append('backup', blob, 'backup.json');
+
+    const res = await fetch('/api/admin/import?adminPin=0000', {
+      method: 'POST',
+      headers: { 'X-Admin-Pin': '0000' },
+      body: formData
+    });
+
+    const result = await res.json();
+    if (!res.ok) {
+      showToast('Import failed: ' + result.error, 'error');
+      importBtn.disabled = false;
+      importBtn.textContent = '⬆️ Restore from Backup';
+      importBtn.style.opacity = '1';
+      return;
+    }
+
+    const r = result.restored;
+    showToast(
+      `✅ Restored! Attendance:${r.attendance ?? 0}, Schedules:${r.schedules ?? 0}, Drivers:${r.drivers ?? 0}`,
+      'success'
+    );
+    _importFileData = null;
+
+    // Reset UI
+    setTimeout(() => renderAdminPanel(), 1500);
+  } catch (e) {
+    showToast('Import error: ' + e.message, 'error');
   }
 }
