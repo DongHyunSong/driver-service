@@ -504,6 +504,56 @@ async function deleteAttendance(recordId) {
 // ========================
 // Schedule Management (Employer)
 // ========================
+window.currentMonthlySchedules = [];
+window.currentMonthlySchedulesLimit = 10;
+
+window.renderMonthlySchedulesList = function() {
+  const container = document.getElementById('monthly-schedules-container');
+  if (!container) return;
+
+  const visibleSchedules = window.currentMonthlySchedules.slice(0, window.currentMonthlySchedulesLimit);
+
+  let html = '';
+  if (window.currentMonthlySchedules.length === 0) {
+    html = '<div class="empty-state"><p>No schedules</p></div>';
+  } else {
+    const formatDate = (dateStr) => {
+      const d = new Date(dateStr);
+      if (isNaN(d)) return dateStr;
+      const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()];
+      const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+      return `${m} ${d.getDate()} (${day})`;
+    };
+
+    html = visibleSchedules.map(s => `
+      <div class="list-item" onclick="showScheduleModal('${s.date}')">
+        <div style="font-size:12px; font-weight:600; color:white; background:var(--accent); padding:4px 8px; border-radius:6px; white-space:nowrap; text-align:center; min-width:85px;">
+          ${formatDate(s.date)}
+        </div>
+        <div class="list-info" style="margin-left: 12px;">
+          <div class="list-name">${s.time} - ${s.pickupPerson}</div>
+          <div class="list-meta">${s.pickupLocation} → ${s.destination}</div>
+        </div>
+      </div>
+    `).join('');
+
+    if (window.currentMonthlySchedulesLimit < window.currentMonthlySchedules.length) {
+      html += `
+        <button class="btn btn-secondary btn-block mt-md" onclick="loadMoreMonthlySchedules()">
+          More (${window.currentMonthlySchedulesLimit} / ${window.currentMonthlySchedules.length})
+        </button>
+      `;
+    }
+  }
+
+  container.innerHTML = html;
+};
+
+window.loadMoreMonthlySchedules = function() {
+  window.currentMonthlySchedulesLimit += 10;
+  window.renderMonthlySchedulesList();
+};
+
 async function renderEmployerSchedule() {
   const content = document.getElementById('employer-content');
   const driverSel = await renderDriverSelector('renderEmployerSchedule');
@@ -519,6 +569,16 @@ async function renderEmployerSchedule() {
     const drv = await api(`/drivers/${AppState.selectedDriverId}`);
     driverName = drv.name;
   } catch (e) {}
+
+  // 최신순 정렬 (날짜 + 시간 내림차순)
+  schedules.sort((a, b) => {
+    const dtA = new Date(`${a.date}T${a.time || '00:00'}`);
+    const dtB = new Date(`${b.date}T${b.time || '00:00'}`);
+    return dtB - dtA;
+  });
+
+  window.currentMonthlySchedules = schedules;
+  window.currentMonthlySchedulesLimit = 10;
 
   const [year, month] = AppState.currentMonth.split('-').map(Number);
   const firstDay = new Date(year, month - 1, 1).getDay();
@@ -567,17 +627,10 @@ async function renderEmployerSchedule() {
       </div>
       
       <div class="section-title mt-lg">Monthly Schedules</div>
-      ${schedules.length === 0 ? '<div class="empty-state"><p>No schedules</p></div>' : ''}
-      ${schedules.map(s => `
-        <div class="list-item" onclick="showScheduleModal('${s.date}')">
-          <div class="list-avatar" style="font-size:12px; background:var(--accent);">${s.date.slice(8)}</div>
-          <div class="list-info">
-            <div class="list-name">${s.time} - ${s.pickupPerson}</div>
-            <div class="list-meta">${s.pickupLocation} → ${s.destination}</div>
-          </div>
-        </div>
-      `).join('')}
+      <div id="monthly-schedules-container"></div>
     </div>`;
+
+  window.renderMonthlySchedulesList();
 }
 
 async function showScheduleModal(dateStr) {
