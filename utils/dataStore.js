@@ -65,10 +65,17 @@ async function syncFromCloud() {
     const dir = isConfig ? CONFIG_DIR : DATA_DIR;
     const filePath = path.join(dir, file);
     try {
-      await bucket.file(file).download({ destination: filePath });
-      console.log(`[GCS] ${file} 다운로드 성공`);
+      const [exists] = await bucket.file(file).exists();
+      if (exists) {
+        await bucket.file(file).download({ destination: filePath });
+        console.log(`[GCS] ${file} downloaded successfully.`);
+      } else {
+        console.log(`[GCS] ${file} does not exist. (First run)`);
+      }
     } catch (err) {
-      console.log(`[GCS] ${file} 다운로드 실패 (초기화 중이거나 파일 없음)`);
+      console.error(`[GCS] Fatal error downloading ${file}:`, err.message);
+      // Throw error on download failure to prevent starting with empty data
+      throw err;
     }
   }
 }
@@ -94,9 +101,12 @@ function readJSON(filename, isConfig = false) {
 function writeJSON(filename, data, isConfig = false) {
   const dir = isConfig ? CONFIG_DIR : DATA_DIR;
   const filePath = path.join(dir, filename);
+  const tempPath = filePath + '.tmp';
   try {
     const jsonString = JSON.stringify(data, null, 2);
-    fs.writeFileSync(filePath, jsonString, 'utf-8');
+    // Atomic write: write to temp file then rename to prevent empty files
+    fs.writeFileSync(tempPath, jsonString, 'utf-8');
+    fs.renameSync(tempPath, filePath);
     
     // GCS 비동기 업로드 (배포 환경에서 데이터 유지용)
     if (bucket) {

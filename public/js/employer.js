@@ -37,10 +37,10 @@ function switchEmployerTab(tabId) {
   }
 
   switch (tabId) {
-    case 'emp-dashboard':  renderEmployerDashboard(); break;
+    case 'emp-dashboard': renderEmployerDashboard(); break;
     case 'emp-attendance': renderAttendanceCalendar(); break;
-    case 'emp-schedule':   renderEmployerSchedule(); break;
-    case 'emp-admin':      renderAdminPanel(); break;
+    case 'emp-schedule': renderEmployerSchedule(); break;
+    case 'emp-admin': renderAdminPanel(); break;
   }
 }
 
@@ -77,25 +77,25 @@ async function renderEmployerDashboard() {
   content.innerHTML = `<div style="color:var(--text-muted);text-align:center;padding:40px">Loading...</div>`;
 
   let drivers = [];
-  try { drivers = await getDrivers(); } catch (e) {}
+  try { drivers = await getDrivers(); } catch (e) { }
 
   let totalPayroll = 0;
   let driversHtml = '';
 
   for (const drv of drivers) {
     let monthAttendance = [];
-    try { monthAttendance = await api(`/attendance?driverId=${drv.id}&month=${AppState.currentMonth}`); } catch (e) {}
+    try { monthAttendance = await api(`/attendance?driverId=${drv.id}&month=${AppState.currentMonth}`); } catch (e) { }
 
     const worked = monthAttendance.filter(r => r.worked);
     const totalDays = worked.length;
-    const totalOt   = worked.reduce((s, r) => s + (r.otHours || 0), 0);
+    const totalOt = worked.reduce((s, r) => s + (r.otHours || 0), 0);
 
     // 오늘 상태
     let todayStatus = { status: 'not_checked_in' };
-    try { todayStatus = await api(`/attendance/status/${drv.id}`); } catch (e) {}
+    try { todayStatus = await api(`/attendance/status/${drv.id}`); } catch (e) { }
 
-    const statusDot = todayStatus.status === 'checked_in'  ? '🟢' :
-                      todayStatus.status === 'completed'   ? '✅' : '⚪';
+    const statusDot = todayStatus.status === 'checked_in' ? '🟢' :
+      todayStatus.status === 'completed' ? '✅' : '⚪';
 
     driversHtml += `
       <div class="list-item" onclick="showQRModal('${drv.id}', '${drv.name}')">
@@ -132,7 +132,7 @@ async function showQRModal(driverId, driverName) {
   AppState.selectedDriverId = driverId;
   const checkinUrl = `${window.location.origin}/checkin/${driverId}`;
   const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(checkinUrl)}`;
-  
+
   showModal(`${driverName}`, `
     <div style="text-align:center">
       <div id="qr-container" style="margin-bottom:16px; min-height:220px; display:flex; align-items:center; justify-content:center;">
@@ -188,9 +188,9 @@ function showAddDriverModal() {
 }
 
 async function addDriver() {
-  const name  = document.getElementById('new-drv-name').value.trim();
+  const name = document.getElementById('new-drv-name').value.trim();
   const phone = document.getElementById('new-drv-phone').value.trim();
-  const pin   = document.getElementById('new-drv-pin').value.trim();
+  const pin = document.getElementById('new-drv-pin').value.trim();
   if (!name || !pin) { showToast('Name and PIN are required.', 'error'); return; }
   try {
     const drv = await api('/drivers', { method: 'POST', body: { name, phone, pin, employerId: AppState.currentUser.id } });
@@ -215,10 +215,10 @@ async function renderAttendanceCalendar() {
 
   let attendance = [], driverName = '';
   try {
-    attendance  = await api(`/attendance?driverId=${AppState.selectedDriverId}&month=${AppState.currentMonth}`);
-    const drv   = await api(`/drivers/${AppState.selectedDriverId}`);
-    driverName  = drv.name;
-  } catch (e) {}
+    attendance = await api(`/attendance?driverId=${AppState.selectedDriverId}&month=${AppState.currentMonth}`);
+    const drv = await api(`/drivers/${AppState.selectedDriverId}`);
+    driverName = drv.name;
+  } catch (e) { }
 
   const isTable = AppState.attendanceView === 'table';
 
@@ -233,24 +233,24 @@ async function renderAttendanceCalendar() {
     viewContent = buildAttendanceTableHTML(AppState.currentMonth, attendance, AppState.settings, 'ko');
   } else {
     const [year, month] = AppState.currentMonth.split('-').map(Number);
-    const firstDay     = new Date(year, month - 1, 1).getDay();
-    const daysInMonth  = new Date(year, month, 0).getDate();
-    const today        = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
-    const weekDays     = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const firstDay = new Date(year, month - 1, 1).getDay();
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     let calHtml = weekDays.map(d => `<div class="calendar-weekday">${d}</div>`).join('');
     for (let i = 0; i < firstDay; i++) calHtml += '<div class="calendar-day empty"></div>';
 
     for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr  = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const rec      = attendance.find(r => r.date === dateStr);
-      const isToday  = dateStr === today;
-      const isSun    = new Date(year, month - 1, d).getDay() === 0;
-      const isHol    = AppState.settings?.philippineHolidays?.includes(dateStr);
-      let   cls      = 'calendar-day';
-      if (isToday)            cls += ' today';
-      if (rec?.worked)        cls += ' worked';
-      if (isSun || isHol)     cls += ' holiday';
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const rec = attendance.find(r => r.date === dateStr);
+      const isToday = dateStr === today;
+      const isSun = new Date(year, month - 1, d).getDay() === 0;
+      const isHol = AppState.settings?.philippineHolidays?.includes(dateStr);
+      let cls = 'calendar-day';
+      if (isToday) cls += ' today';
+      if (rec?.worked) cls += ' worked';
+      if (isSun || isHol) cls += ' holiday';
 
       const otBadge = rec?.otHours > 0 ? `<span class="ot-badge">+${rec.otHours}h</span>` : '';
       const hoursWorked = rec?.hoursWorked ? `<div style="font-size: 10px; opacity: 0.8; margin-top: 4px;">(${rec.hoursWorked}h)</div>` : '';
@@ -263,9 +263,9 @@ async function renderAttendanceCalendar() {
     viewContent = `<div class="calendar-grid">${calHtml}</div>`;
   }
 
-  const worked     = attendance.filter(r => r.worked);
-  const totalDays  = worked.length;
-  const totalOt    = worked.reduce((s, r) => s + (r.otHours || 0), 0).toFixed(1);
+  const worked = attendance.filter(r => r.worked);
+  const totalDays = worked.length;
+  const totalOt = worked.reduce((s, r) => s + (r.otHours || 0), 0).toFixed(1);
   const weekdayCnt = worked.filter(r => r.dayType === 'weekday').length;
   const holidayCnt = worked.filter(r => r.dayType === 'holiday').length;
 
@@ -326,11 +326,11 @@ async function showAttendanceModal(dateStr) {
   try {
     const recs = await api(`/attendance?driverId=${AppState.selectedDriverId}&month=${dateStr.slice(0, 7)}`);
     rec = recs.find(r => r.date === dateStr) || null;
-  } catch (e) {}
+  } catch (e) { }
 
-  const isSun  = new Date(dateStr + 'T00:00:00').getDay() === 0;
-  const isHol  = AppState.settings?.philippineHolidays?.includes(dateStr);
-  const auto   = (isSun || isHol) ? 'holiday' : 'weekday';
+  const isSun = new Date(dateStr + 'T00:00:00').getDay() === 0;
+  const isHol = AppState.settings?.philippineHolidays?.includes(dateStr);
+  const auto = (isSun || isHol) ? 'holiday' : 'weekday';
   const dayType = rec?.dayType || auto;
 
   // 시간 포맷 헬퍼
@@ -349,7 +349,7 @@ async function showAttendanceModal(dateStr) {
   const html = `
     <div class="mb-md flex-between">
       <strong>${dateStr}</strong>
-      <span class="badge ${dayType==='holiday'?'badge-error':'badge-info'}">${dayType==='holiday'?'Holiday':'Weekday'}</span>
+      <span class="badge ${dayType === 'holiday' ? 'badge-error' : 'badge-info'}">${dayType === 'holiday' ? 'Holiday' : 'Weekday'}</span>
     </div>
     ${rec ? `
       <div class="info-rows mb-md" style="background:var(--bg-input);border-radius:10px;overflow:hidden">
@@ -394,12 +394,12 @@ async function showAttendanceModal(dateStr) {
       </div>
       <div class="flex gap-sm">
         <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" style="flex:1" onclick="saveAttendance('${dateStr}','${rec?.id||''}')">
+        <button class="btn btn-primary" style="flex:1" onclick="saveAttendance('${dateStr}','${rec?.id || ''}')">
           ${rec ? 'Update' : 'Save'}
         </button>
         ${rec ? `<button class="btn btn-danger" onclick="deleteAttendance('${rec.id}')">Delete</button>` : ''}
       </div>
-    ` : ''}` ;
+    ` : ''}`;
 
   showModal(rec ? 'View Record' : 'Record', html);
 }
@@ -435,11 +435,11 @@ function showManualAttendanceModal() {
 }
 
 async function saveManualAttendance() {
-  const date        = document.getElementById('manual-date').value;
+  const date = document.getElementById('manual-date').value;
   const clockInTime = document.getElementById('modal-clockin').value;
   const clockOutTime = document.getElementById('modal-clockout').value;
   const hoursWorked = parseFloat(document.getElementById('modal-hours').value);
-  const note        = document.getElementById('modal-note').value;
+  const note = document.getElementById('modal-note').value;
 
   // HH:mm 또는 HH:mm:ss 텍스트 직접 입력 파싱
   const toISO = (dateStr, timeStr) => {
@@ -452,7 +452,7 @@ async function saveManualAttendance() {
     return d.toISOString();
   };
 
-  const clockIn  = toISO(date, clockInTime);
+  const clockIn = toISO(date, clockInTime);
   const clockOut = toISO(date, clockOutTime);
 
   try {
@@ -463,10 +463,10 @@ async function saveManualAttendance() {
 }
 
 async function saveAttendance(dateStr, recordId) {
-  const clockInTime  = document.getElementById('modal-clockin')?.value;
+  const clockInTime = document.getElementById('modal-clockin')?.value;
   const clockOutTime = document.getElementById('modal-clockout')?.value;
-  const hoursWorked  = parseFloat(document.getElementById('modal-hours').value);
-  const note         = document.getElementById('modal-note').value;
+  const hoursWorked = parseFloat(document.getElementById('modal-hours').value);
+  const note = document.getElementById('modal-note').value;
 
   // HH:mm 또는 HH:mm:ss 텍스트 직접 입력 파싱
   const toISO = (date, timeStr) => {
@@ -479,7 +479,7 @@ async function saveAttendance(dateStr, recordId) {
     return d.toISOString();
   };
 
-  const clockIn  = toISO(dateStr, clockInTime);
+  const clockIn = toISO(dateStr, clockInTime);
   const clockOut = toISO(dateStr, clockOutTime);
 
   try {
@@ -507,7 +507,7 @@ async function deleteAttendance(recordId) {
 window.currentMonthlySchedules = [];
 window.currentMonthlySchedulesLimit = 10;
 
-window.renderMonthlySchedulesList = function() {
+window.renderMonthlySchedulesList = function () {
   const container = document.getElementById('monthly-schedules-container');
   if (!container) return;
 
@@ -549,7 +549,7 @@ window.renderMonthlySchedulesList = function() {
   container.innerHTML = html;
 };
 
-window.loadMoreMonthlySchedules = function() {
+window.loadMoreMonthlySchedules = function () {
   window.currentMonthlySchedulesLimit += 10;
   window.renderMonthlySchedulesList();
 };
@@ -568,7 +568,7 @@ async function renderEmployerSchedule() {
     schedules = await api(`/schedules?driverId=${AppState.selectedDriverId}&month=${AppState.currentMonth}`);
     const drv = await api(`/drivers/${AppState.selectedDriverId}`);
     driverName = drv.name;
-  } catch (e) {}
+  } catch (e) { }
 
   // 최신순 정렬 (날짜 + 시간 내림차순)
   schedules.sort((a, b) => {
@@ -584,18 +584,18 @@ async function renderEmployerSchedule() {
   const firstDay = new Date(year, month - 1, 1).getDay();
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
-  const weekDays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   let calHtml = weekDays.map(d => `<div class="calendar-weekday">${d}</div>`).join('');
   for (let i = 0; i < firstDay; i++) calHtml += '<div class="calendar-day empty"></div>';
 
   for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const daySchedules = schedules.filter(s => s.date === dateStr);
     const isToday = dateStr === today;
     const isSun = new Date(year, month - 1, d).getDay() === 0;
     const isHol = AppState.settings?.philippineHolidays?.includes(dateStr);
-    
+
     let cls = 'calendar-day';
     if (isToday) cls += ' today';
     if (isSun || isHol) cls += ' holiday';
@@ -638,7 +638,7 @@ async function showScheduleModal(dateStr) {
   try {
     const all = await api(`/schedules?driverId=${AppState.selectedDriverId}&month=${dateStr.slice(0, 7)}`);
     schedules = all.filter(s => s.date === dateStr);
-  } catch (e) {}
+  } catch (e) { }
 
   window.currentDaySchedules = schedules;
 
@@ -687,15 +687,15 @@ async function showScheduleModal(dateStr) {
   `);
 }
 
-window.populateScheduleForm = function(id) {
+window.populateScheduleForm = function (id) {
   const s = window.currentDaySchedules.find(x => x.id === id);
-  if(!s) return;
+  if (!s) return;
   document.getElementById('sch-time').value = s.time;
   document.getElementById('sch-person').value = s.pickupPerson || '';
   document.getElementById('sch-location').value = s.pickupLocation || '';
   document.getElementById('sch-destination').value = s.destination || '';
   document.getElementById('sch-note').value = s.note || '';
-  
+
   const btn = document.getElementById('sch-submit-btn');
   btn.textContent = 'Update';
   btn.onclick = () => updateSchedule(id, s.date);
@@ -733,7 +733,7 @@ async function saveSchedule(dateStr) {
   try {
     const body = { driverId: AppState.selectedDriverId, date: dateStr, time, pickupPerson, pickupLocation, destination, note };
     const s = await api('/schedules', { method: 'POST', body });
-    
+
     if (confirm('Add this to Google Calendar?')) {
       window.open(getGoogleCalendarUrl(s), '_blank');
     }
@@ -885,13 +885,13 @@ function handleFileSelected(file) {
         <div style="color:var(--text-muted); margin-bottom:10px;">Exported: ${exportedDate}</div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
           ${[
-            ['Employers',   (d.employers  ||[]).length],
-            ['Drivers',     (d.drivers    ||[]).length],
-            ['Attendance',  (d.attendance ||[]).length],
-            ['Schedules',   (d.schedules  ||[]).length],
-            ['Payments',    (d.payments   ||[]).length],
-            ['Pay Settings', d.paySettings ? '✓' : '—'],
-          ].map(([label, val]) => `
+          ['Employers', (d.employers || []).length],
+          ['Drivers', (d.drivers || []).length],
+          ['Attendance', (d.attendance || []).length],
+          ['Schedules', (d.schedules || []).length],
+          ['Payments', (d.payments || []).length],
+          ['Pay Settings', d.paySettings ? '✓' : '—'],
+        ].map(([label, val]) => `
             <div style="background:var(--bg-card); border-radius:8px; padding:8px 12px; display:flex; justify-content:space-between;">
               <span style="color:var(--text-muted);">${label}</span>
               <strong>${val}</strong>
@@ -950,6 +950,13 @@ async function importAllData() {
   const exportedAt = _importFileData.exportedAt
     ? new Date(_importFileData.exportedAt).toLocaleString('en-PH')
     : 'Unknown';
+
+  const password = prompt('Enter Admin PIN to restore data:');
+  if (password !== '0600') {
+    showToast('Incorrect PIN.', 'error');
+    return;
+  }
+
   const confirmed = confirm(
     `⚠️ RESTORE FROM BACKUP?\n\nBackup date: ${exportedAt}\n\nThis will OVERWRITE all current data. Are you sure?`
   );
