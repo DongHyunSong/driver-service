@@ -43,6 +43,9 @@ if (isGCP) {
   }
 }
 
+// in-memory string cache to prevent GC spikes and memory leak from fs.readFileSync
+const stringCache = {};
+
 let storage, bucket;
 const bucketName = process.env.GCS_BUCKET || (isGCP ? `${process.env.GOOGLE_CLOUD_PROJECT}.appspot.com` : null);
 
@@ -69,6 +72,8 @@ async function syncFromCloud() {
       if (exists) {
         await bucket.file(file).download({ destination: filePath });
         console.log(`[GCS] ${file} downloaded successfully.`);
+        // Cache the downloaded file
+        stringCache[file] = fs.readFileSync(filePath, 'utf-8');
       } else {
         console.log(`[GCS] ${file} does not exist. (First run)`);
       }
@@ -81,17 +86,65 @@ async function syncFromCloud() {
 }
 
 /**
+ * 6시간마다 현재 데이터를 GCS에 백업하여 메모리 부족 등 재실행 시 데이터 유실 방지
+ */
+async function exportToCloudAll() {
+  if (!bucket) return;
+  console.log(`[GCS] 주기적 데이터 백업 시작 (6시간 간격)...`);
+  const files = ['employers.json', 'drivers.json', 'attendance.json', 'payments.json', 'pay-settings.json', 'schedules.json', 'push_subscriptions.json'];
+  for (const file of files) {
+    let raw = stringCache[file];
+    if (!raw) {
+      const isConfig = file === 'pay-settings.json';
+      const dir = isConfig ? CONFIG_DIR : DATA_DIR;
+      const filePath = path.join(dir, file);
+      if (fs.existsSync(filePath)) {
+        try {
+          raw = fs.readFileSync(filePath, 'utf-8');
+          stringCache[file] = raw;
+        } catch (e) {}
+      }
+    }
+    
+    if (raw) {
+      try {
+        await bucket.file(file).save(raw);
+        console.log(`[GCS] ${file} 주기적 백업 완료.`);
+      } catch (err) {
+        console.error(`[GCS] ${file} 주기적 백업 실패:`, err.message);
+      }
+    }
+  }
+}
+
+// 6시간마다 백업 스케줄러 등록
+if (bucket) {
+  setInterval(exportToCloudAll, 6 * 60 * 60 * 1000);
+}
+
+/**
  * JSON 파일 읽기
  */
 function readJSON(filename, isConfig = false) {
+  if (stringCache[filename]) {
+    try {
+      return JSON.parse(stringCache[filename]);
+    } catch (e) {
+      console.error(`Error parsing cached ${filename}:`, e.message);
+    }
+  }
+
   const dir = isConfig ? CONFIG_DIR : DATA_DIR;
   const filePath = path.join(dir, filename);
   try {
     const raw = fs.readFileSync(filePath, 'utf-8');
+    stringCache[filename] = raw;
     return JSON.parse(raw);
   } catch (err) {
     console.error(`Error reading ${filePath}:`, err.message);
-    return isConfig ? {} : [];
+    const fallback = isConfig ? {} : [];
+    stringCache[filename] = JSON.stringify(fallback);
+    return fallback;
   }
 }
 
@@ -99,21 +152,19 @@ function readJSON(filename, isConfig = false) {
  * JSON 파일 쓰기
  */
 function writeJSON(filename, data, isConfig = false) {
+  const jsonString = JSON.stringify(data, null, 2);
+  stringCache[filename] = jsonString;
+
   const dir = isConfig ? CONFIG_DIR : DATA_DIR;
   const filePath = path.join(dir, filename);
   const tempPath = filePath + '.tmp';
   try {
-    const jsonString = JSON.stringify(data, null, 2);
     // Atomic write: write to temp file then rename to prevent empty files
     fs.writeFileSync(tempPath, jsonString, 'utf-8');
     fs.renameSync(tempPath, filePath);
     
-    // GCS 비동기 업로드 (배포 환경에서 데이터 유지용)
-    if (bucket) {
-      bucket.file(filename).save(jsonString).catch(err => {
-        console.error(`[GCS] ${filename} 업로드 실패:`, err.message);
-      });
-    }
+    // 이전에 있던 즉각적인 GCS 업로드는 메모리 릭 및 성능 저하 방지를 위해 제거.
+    // 대신 주기적인 exportToCloudAll 스케줄러가 6시간마다 백업을 수행합니다.
     
     return true;
   } catch (err) {
