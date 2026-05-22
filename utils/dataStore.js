@@ -1,14 +1,14 @@
 /**
- * JSON 파일 기반 데이터 저장소 유틸리티
- * 모든 JSON 데이터 파일의 읽기/쓰기를 중앙 관리
+ * JSON file-based data store utility.
+ * Centrally manages read/write operations for all JSON data files.
  */
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { Storage } = require('@google-cloud/storage');
 
-const isGCP = !!process.env.GOOGLE_CLOUD_PROJECT;
-// GCP App Engine 환경에서는 파일 시스템이 읽기 전용이므로 쓰기 가능한 /tmp 디렉토리 사용
+const isGCP = !!(process.env.GOOGLE_CLOUD_PROJECT || process.env.K_SERVICE || process.env.GAE_SERVICE);
+// In GCP environment (App Engine / Cloud Run), the local filesystem is read-only or ephemeral, so use the writable /tmp directory.
 const BASE_DIR = isGCP ? os.tmpdir() : path.join(__dirname, '..');
 const DATA_DIR = path.join(BASE_DIR, 'data');
 const CONFIG_DIR = path.join(BASE_DIR, 'config');
@@ -17,7 +17,7 @@ const CONFIG_DIR = path.join(BASE_DIR, 'config');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
 
-// GCP 환경일 경우 배포된 원본 파일들을 /tmp 로 초기 복사 (최초 실행 시)
+// For GCP environment, copy the deployed template files to /tmp on the first run.
 if (isGCP) {
   const repoDataDir = path.join(__dirname, '..', 'data');
   const repoConfigDir = path.join(__dirname, '..', 'config');
@@ -46,28 +46,64 @@ if (isGCP) {
 // in-memory string cache to prevent GC spikes and memory leak from fs.readFileSync
 const stringCache = {};
 
-let storage, bucket;
-const bucketName = process.env.GCS_BUCKET || (isGCP ? `${process.env.GOOGLE_CLOUD_PROJECT}.appspot.com` : null);
+let storage = new Storage();
+let bucket = null;
 
-if (bucketName) {
-  storage = new Storage();
-  bucket = storage.bucket(bucketName);
-  console.log(`[GCS] Storage 연동 활성화 (버킷: ${bucketName})`);
-} else {
-  console.log(`[GCS] 버킷 환경변수가 없으므로 로컬 파일 시스템만 사용합니다.`);
+/**
+ * Initialize GCS storage and bucket configuration.
+ * Dynamically resolves the project ID from metadata server or environment if not explicitly set.
+ */
+async function initGCS() {
+  let bName = process.env.GCS_BUCKET;
+  if (!bName) {
+    let projId = process.env.GOOGLE_CLOUD_PROJECT;
+    if (!projId) {
+      try {
+        projId = await storage.getProjectId();
+        console.log(`[GCS] Dynamically retrieved project ID: ${projId}`);
+      } catch (err) {
+        console.log(`[GCS] Failed to retrieve project ID dynamically:`, err.message);
+      }
+    }
+    if (projId) {
+      bName = `${projId}.appspot.com`;
+    }
+  }
+
+  if (bName) {
+    bucket = storage.bucket(bName);
+    console.log(`[GCS] Storage integration active (Bucket: ${bName})`);
+  } else {
+    console.log(`[GCS] No GCS bucket configured. Using local filesystem only.`);
+  }
 }
 
 /**
- * 서버 시작 시 GCP 버킷에서 최신 데이터 다운로드 (백그라운드 동기화)
+ * Scheduled backup helper to start interval task
+ */
+function startPeriodicBackup() {
+  if (bucket) {
+    console.log('[GCS] Scheduling periodic GCS backups (6-hour interval)');
+    setInterval(exportToCloudAll, 6 * 60 * 60 * 1000);
+  }
+}
+
+/**
+ * Sync latest data files from GCS bucket at server startup
  */
 async function syncFromCloud() {
-  if (!bucket) return;
+  await initGCS();
+  if (!bucket) {
+    console.log('[GCS] Skipping sync. GCS integration is disabled.');
+    return;
+  }
+
   const files = ['employers.json', 'drivers.json', 'attendance.json', 'payments.json', 'pay-settings.json', 'schedules.json', 'push_subscriptions.json'];
-  for (const file of files) {
-    const isConfig = file === 'pay-settings.json';
-    const dir = isConfig ? CONFIG_DIR : DATA_DIR;
-    const filePath = path.join(dir, file);
-    try {
+  try {
+    for (const file of files) {
+      const isConfig = file === 'pay-settings.json';
+      const dir = isConfig ? CONFIG_DIR : DATA_DIR;
+      const filePath = path.join(dir, file);
       const [exists] = await bucket.file(file).exists();
       if (exists) {
         await bucket.file(file).download({ destination: filePath });
@@ -75,22 +111,25 @@ async function syncFromCloud() {
         // Cache the downloaded file
         stringCache[file] = fs.readFileSync(filePath, 'utf-8');
       } else {
-        console.log(`[GCS] ${file} does not exist. (First run)`);
+        console.log(`[GCS] ${file} does not exist in bucket (first run).`);
       }
-    } catch (err) {
-      console.error(`[GCS] Fatal error downloading ${file}:`, err.message);
-      // Throw error on download failure to prevent starting with empty data
-      throw err;
     }
+    // Only schedule periodic backups if startup sync succeeded
+    startPeriodicBackup();
+  } catch (err) {
+    console.error(`[GCS] Failed to sync data from GCS bucket:`, err.message);
+    console.error(`[GCS] Please ensure that the GCS bucket exists and the Cloud Run service account has 'Storage Object Admin' permissions.`);
+    console.error(`[GCS] GCS integration is disabled. Falling back to local filesystem (data will NOT persist across restarts).`);
+    bucket = null;
   }
 }
 
 /**
- * 6시간마다 현재 데이터를 GCS에 백업하여 메모리 부족 등 재실행 시 데이터 유실 방지
+ * Periodic backup function to save current cache to GCS
  */
 async function exportToCloudAll() {
   if (!bucket) return;
-  console.log(`[GCS] 주기적 데이터 백업 시작 (6시간 간격)...`);
+  console.log('[GCS] Starting periodic data backup (6-hour interval)...');
   const files = ['employers.json', 'drivers.json', 'attendance.json', 'payments.json', 'pay-settings.json', 'schedules.json', 'push_subscriptions.json'];
   for (const file of files) {
     let raw = stringCache[file];
@@ -109,17 +148,12 @@ async function exportToCloudAll() {
     if (raw) {
       try {
         await bucket.file(file).save(raw);
-        console.log(`[GCS] ${file} 주기적 백업 완료.`);
+        console.log(`[GCS] ${file} periodic backup completed.`);
       } catch (err) {
-        console.error(`[GCS] ${file} 주기적 백업 실패:`, err.message);
+        console.error(`[GCS] ${file} periodic backup failed:`, err.message);
       }
     }
   }
-}
-
-// 6시간마다 백업 스케줄러 등록
-if (bucket) {
-  setInterval(exportToCloudAll, 6 * 60 * 60 * 1000);
 }
 
 /**
@@ -149,7 +183,7 @@ function readJSON(filename, isConfig = false) {
 }
 
 /**
- * JSON 파일 쓰기
+ * Write data to a JSON file and upload immediately to GCS.
  */
 function writeJSON(filename, data, isConfig = false) {
   const jsonString = JSON.stringify(data, null, 2);
@@ -163,8 +197,16 @@ function writeJSON(filename, data, isConfig = false) {
     fs.writeFileSync(tempPath, jsonString, 'utf-8');
     fs.renameSync(tempPath, filePath);
     
-    // 이전에 있던 즉각적인 GCS 업로드는 메모리 릭 및 성능 저하 방지를 위해 제거.
-    // 대신 주기적인 exportToCloudAll 스케줄러가 6시간마다 백업을 수행합니다.
+    // Immediately upload to GCS to prevent data loss on stateless container restarts (e.g., on Cloud Run)
+    if (bucket) {
+      bucket.file(filename).save(jsonString)
+        .then(() => {
+          console.log(`[GCS] Successfully backed up ${filename} immediately.`);
+        })
+        .catch(err => {
+          console.error(`[GCS] Immediate backup failed for ${filename}:`, err.message);
+        });
+    }
     
     return true;
   } catch (err) {
@@ -181,14 +223,14 @@ function getPaySettings() {
 }
 
 /**
- * 급여 설정 저장
+ * Save payroll settings.
  */
 function savePaySettings(settings) {
   return writeJSON('pay-settings.json', settings, true);
 }
 
 /**
- * 특정 날짜가 필리핀 공휴일인지 확인
+ * Check if a specific date is a Philippine holiday.
  */
 function isHoliday(dateStr) {
   const settings = getPaySettings();
@@ -196,7 +238,7 @@ function isHoliday(dateStr) {
 }
 
 /**
- * 특정 날짜가 일요일인지 확인
+ * Check if a specific date is a Sunday.
  */
 function isSunday(dateStr) {
   const date = new Date(dateStr + 'T00:00:00');
@@ -204,7 +246,7 @@ function isSunday(dateStr) {
 }
 
 /**
- * dayType 결정: 공휴일 또는 일요일이면 'holiday', 아니면 'weekday'
+ * Determine the day type: 'holiday' if it is a Sunday or holiday, otherwise 'weekday'.
  */
 function getDayType(dateStr) {
   if (isHoliday(dateStr) || isSunday(dateStr)) {
@@ -214,7 +256,7 @@ function getDayType(dateStr) {
 }
 
 /**
- * 간단한 ID 생성 (uuid 대체용)
+ * Generate a simple unique ID (alternative to uuid).
  */
 function generateId(prefix = '') {
   const timestamp = Date.now().toString(36);
