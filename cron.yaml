@@ -1,0 +1,5 @@
+cron:
+- description: "Twice daily email backup at 10 AM and 10 PM Manila time"
+  url: /api/admin/scheduled-email-backup
+  schedule: every day 10:00,22:00
+  timezone: Asia/Manila

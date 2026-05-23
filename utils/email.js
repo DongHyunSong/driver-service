@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { readJSON, getPaySettings } = require('./dataStore');
 
 const EMAIL_USER = process.env.EMAIL_USER || 'songdh418@gmail.com';
 const EMAIL_PASS = process.env.EMAIL_PASS || 'ubggrywvrykvyybl';
@@ -129,4 +130,54 @@ async function sendBackupEmail(toEmail, snapshot) {
   return info;
 }
 
-module.exports = { sendAttendanceEmail, sendBackupEmail };
+let lastSentTimeSlotKey = '';
+
+/**
+ * Start a local background interval scheduler (checks every minute)
+ * to send backup emails at 10:00 AM and 10:00 PM Manila time.
+ */
+function startEmailBackupScheduler() {
+  console.log('[Backup Scheduler] Local email backup scheduler started (10 AM & 10 PM Manila time)');
+  
+  setInterval(async () => {
+    try {
+      const manilaDateStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' });
+      const manilaDate = new Date(manilaDateStr);
+      const hour = manilaDate.getHours();
+      const minute = manilaDate.getMinutes();
+      const dateStr = manilaDate.toDateString();
+
+      // Check if it matches 10:00 AM or 10:00 PM
+      if ((hour === 10 || hour === 22) && minute === 0) {
+        const timeSlotKey = `${dateStr}-${hour}`;
+        if (lastSentTimeSlotKey !== timeSlotKey) {
+          lastSentTimeSlotKey = timeSlotKey;
+          console.log(`[Backup Scheduler] Triggering scheduled backup email at ${hour === 10 ? '10:00 AM' : '10:00 PM'} Manila time...`);
+
+          const snapshot = {
+            exportedAt: new Date().toISOString(),
+            version: 1,
+            data: {
+              employers:          readJSON('employers.json'),
+              drivers:            readJSON('drivers.json'),
+              attendance:         readJSON('attendance.json'),
+              payments:           readJSON('payments.json'),
+              schedules:          readJSON('schedules.json'),
+              paySettings:        getPaySettings(),
+            }
+          };
+
+          const employers = readJSON('employers.json');
+          const adminEmp = employers.find(e => e.isAdmin);
+          const targetEmail = adminEmp?.email || EMAIL_USER;
+
+          await sendBackupEmail(targetEmail, snapshot);
+        }
+      }
+    } catch (err) {
+      console.error('[Backup Scheduler] Failed to run scheduled backup email:', err.message);
+    }
+  }, 60000); // Check once every minute
+}
+
+module.exports = { sendAttendanceEmail, sendBackupEmail, startEmailBackupScheduler };

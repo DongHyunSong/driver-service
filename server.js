@@ -48,10 +48,12 @@ app.get('*', (req, res) => {
 
 const { syncFromCloud } = require('./utils/dataStore');
 const { startPushScheduler } = require('./utils/pushNotify');
+const { startEmailBackupScheduler } = require('./utils/email');
 
 syncFromCloud().then(() => {
   app.listen(PORT, () => {
     console.log(`🚗 Driver Payment Server running on http://localhost:${PORT}`);
     startPushScheduler();
+    startEmailBackupScheduler();
   });
 });

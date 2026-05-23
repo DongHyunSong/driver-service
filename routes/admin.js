@@ -119,4 +119,47 @@ router.post('/email-backup', adminGuard, async (req, res) => {
   }
 });
 
+// ── GET /api/admin/scheduled-email-backup ──────────────────────────────────
+router.get('/scheduled-email-backup', (req, res) => {
+  const isCron = req.headers['x-appengine-cron'] === 'true';
+  const pin = req.headers['x-admin-pin'] || req.query?.adminPin;
+  
+  if (!isCron && pin !== '0000') {
+    return res.status(403).json({ error: 'Access denied.' });
+  }
+
+  try {
+    const snapshot = {
+      exportedAt: new Date().toISOString(),
+      version: 1,
+      data: {
+        employers:          readJSON('employers.json'),
+        drivers:            readJSON('drivers.json'),
+        attendance:         readJSON('attendance.json'),
+        payments:           readJSON('payments.json'),
+        schedules:          readJSON('schedules.json'),
+        paySettings:        getPaySettings(),
+      }
+    };
+
+    const employers = readJSON('employers.json');
+    const adminEmp = employers.find(e => e.isAdmin);
+    const targetEmail = adminEmp?.email || process.env.EMAIL_USER || 'songdh418@gmail.com';
+
+    sendBackupEmail(targetEmail, snapshot)
+      .then(() => {
+        console.log(`[Cron] Scheduled backup email sent successfully to ${targetEmail}`);
+        res.json({ success: true, message: `Backup email sent to ${targetEmail}` });
+      })
+      .catch(err => {
+        console.error('[Cron] Email sending failed:', err);
+        res.status(500).json({ error: 'Email sending failed: ' + err.message });
+      });
+  } catch (err) {
+    console.error('[Cron Backup] Error:', err);
+    res.status(500).json({ error: 'Scheduled backup failed: ' + err.message });
+  }
+});
+
 module.exports = router;
+
