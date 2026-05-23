@@ -306,7 +306,7 @@ async function renderAttendanceCalendar() {
         <div class="stat-card"><div class="stat-value">${holidayCnt}</div><div class="stat-label">Holiday</div></div>
       </div>
       <div class="section-title">Functions</div>
-      <div class="flex gap-sm">
+      <div class="grid-responsive gap-sm">
         <button class="btn btn-secondary btn-block" onclick="handleExcelExport()">
           📊 Download Excel (.xlsx)
         </button>

@@ -992,6 +992,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .mb-lg { margin-bottom: var(--space-lg); }
 .flex { display: flex; }
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
+.grid-responsive { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 .gap-sm { gap: var(--space-sm); }
 .gap-md { gap: var(--space-md); }
 .hidden { display: none !important; }
