@@ -5,8 +5,8 @@
 
 const { readJSON, getPaySettings } = require('./dataStore');
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8862571434:AAHGPJKf7HCXzLFv_EvCXAnNUza412zjW2M';
+const CHAT_ID = process.env.TELEGRAM_CHAT_ID || '886109285';
 
 /**
  * Send backup snapshot file via Telegram Bot.
@@ -48,4 +48,58 @@ async function sendTelegramBackup(snapshot) {
   }
 }
 
-module.exports = { sendTelegramBackup };
+/**
+ * Send driver attendance notification via Telegram Bot in Korean.
+ * @param {Object} driver - Driver object
+ * @param {Object} record - Attendance record object
+ * @param {String} action - 'checkin' | 'checkout' | 'manual'
+ * @returns {Promise<Object>} - Fetch response JSON or null
+ */
+async function sendAttendanceTelegram(driver, record, action) {
+  if (!BOT_TOKEN || !CHAT_ID) {
+    return null;
+  }
+
+  const timeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' };
+  let message = '';
+
+  if (action === 'checkin') {
+    const inTime = new Date(record.clockIn).toLocaleTimeString('ko-KR', timeFormatOptions);
+    message = `👔 *[드라이버 출근 알림]*\n\n👤 *드라이버*: ${driver.name}\n📅 *날짜*: ${record.date}\n⏰ *출근 시간*: ${inTime}`;
+  } else if (action === 'checkout') {
+    const inTime = new Date(record.clockIn).toLocaleTimeString('ko-KR', timeFormatOptions);
+    const outTime = new Date(record.clockOut).toLocaleTimeString('ko-KR', timeFormatOptions);
+    message = `👔 *[드라이버 퇴근 알림]*\n\n👤 *드라이버*: ${driver.name}\n📅 *날짜*: ${record.date}\n⏰ *출근 시간*: ${inTime}\n⏰ *퇴근 시간*: ${outTime}\n⏱ *총 근무 시간*: ${record.hoursWorked}시간 (OT: ${record.otHours}시간)`;
+  } else if (action === 'manual') {
+    message = `👔 *[드라이버 근태 수동 기록 알림]*\n\n👤 *드라이버*: ${driver.name}\n📅 *날짜*: ${record.date}\n⏱ *총 근무 시간*: ${record.hoursWorked}시간 (OT: ${record.otHours}시간)\n📝 *메모*: ${record.note || '없음'}`;
+  } else {
+    return null;
+  }
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text: message,
+        parse_mode: 'Markdown'
+      })
+    });
+
+    const result = await res.json();
+    if (!res.ok) {
+      throw new Error(result.description || 'Failed to send message to Telegram.');
+    }
+
+    console.log(`[Telegram] Attendance notification sent successfully for ${driver.name}.`);
+    return result;
+  } catch (err) {
+    console.error('[Telegram] Failed to send attendance notification:', err.message);
+    return null;
+  }
+}
+
+module.exports = { sendTelegramBackup, sendAttendanceTelegram };

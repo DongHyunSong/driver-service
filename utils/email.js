@@ -90,6 +90,14 @@ async function sendAttendanceEmail(employer, driver, record, action) {
   } catch (error) {
     console.error('[Email] 메일 발송 실패:', error);
   }
+
+  // Send Telegram notification
+  try {
+    const { sendAttendanceTelegram } = require('./telegram');
+    await sendAttendanceTelegram(driver, record, action);
+  } catch (e) {
+    console.error('[Email] Failed to send Telegram attendance notification:', e.message);
+  }
 }
 /**
  * Send backup snapshot file via email.
