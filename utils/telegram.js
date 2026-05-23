@@ -6,7 +6,7 @@
 const { readJSON, getPaySettings } = require('./dataStore');
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8862571434:AAHGPJKf7HCXzLFv_EvCXAnNUza412zjW2M';
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID || '886109285';
+const CHAT_ID = process.env.TELEGRAM_CHAT_ID || '8861091285';
 
 /**
  * Send backup snapshot file via Telegram Bot.
