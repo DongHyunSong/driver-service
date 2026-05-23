@@ -90,13 +90,45 @@ async function sendAttendanceEmail(employer, driver, record, action) {
   } catch (error) {
     console.error('[Email] 메일 발송 실패:', error);
   }
+}
 
-  // Send Telegram notification
+/**
+ * 드라이버 출퇴근 시 이메일 및 텔레그램 알림을 발송하는 통합 함수
+ * @param {Object} driver 드라이버 객체
+ * @param {Object} record 출퇴근 기록 객체
+ * @param {String} action 'checkin' | 'checkout' | 'manual'
+ */
+async function sendAttendanceNotifications(driver, record, action) {
+  // 1. 텔레그램 알림 발송 (전역 설정이므로 고용주 유무에 관계없이 독립적으로 실행)
   try {
     const { sendAttendanceTelegram } = require('./telegram');
     await sendAttendanceTelegram(driver, record, action);
   } catch (e) {
-    console.error('[Email] Failed to send Telegram attendance notification:', e.message);
+    console.error('[Notification] Failed to send Telegram attendance notification:', e.message);
+  }
+
+  // 2. 고용주 찾기
+  try {
+    const employers = readJSON('employers.json');
+    let employer = employers.find(e => e.id === driver.employerId);
+    
+    // Fallback: driver.employerId가 매칭되지 않을 경우 driverIds 배열 검사
+    if (!employer) {
+      employer = employers.find(e => e.driverIds && e.driverIds.includes(driver.id));
+    }
+    
+    // Ultimate fallback: 관리자 또는 첫 번째 고용주
+    if (!employer) {
+      employer = employers.find(e => e.isAdmin) || employers[0];
+    }
+
+    if (employer) {
+      await sendAttendanceEmail(employer, driver, record, action);
+    } else {
+      console.log(`[Notification] No employer found to send email for driver: ${driver.name}`);
+    }
+  } catch (err) {
+    console.error('[Notification] Error during email notification dispatch:', err.message);
   }
 }
 /**
@@ -203,4 +235,4 @@ function startEmailBackupScheduler() {
   }, 60000); // Check once every minute
 }
 
-module.exports = { sendAttendanceEmail, sendBackupEmail, startEmailBackupScheduler };
+module.exports = { sendAttendanceEmail, sendBackupEmail, startEmailBackupScheduler, sendAttendanceNotifications };
