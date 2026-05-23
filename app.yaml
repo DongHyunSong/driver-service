@@ -7,7 +7,7 @@ env_variables:
   EMAIL_USER: songdh418@gmail.com
   EMAIL_PASS: ubggrywvrykvyybl
   TELEGRAM_BOT_TOKEN: "8862571434:AAHGPJKf7HCXzLFv_EvCXAnNUza412zjW2M"
-  TELEGRAM_CHAT_ID: "your_chat_id_here"
+  TELEGRAM_CHAT_ID: "886109285"
 
 handlers:
   - url: /.*
