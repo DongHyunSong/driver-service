@@ -102,4 +102,6 @@ async function sendAttendanceTelegram(driver, record, action) {
   }
 }
 
-module.exports = { sendTelegramBackup, sendAttendanceTelegram };
+const isConfigured = !!(BOT_TOKEN && CHAT_ID);
+
+module.exports = { sendTelegramBackup, sendAttendanceTelegram, isConfigured };

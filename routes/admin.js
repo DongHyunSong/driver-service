@@ -151,8 +151,8 @@ router.get('/scheduled-email-backup', async (req, res) => {
 
     // Send Telegram backup if configured
     let telegramPromise = Promise.resolve();
-    if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
-      const { sendTelegramBackup } = require('../utils/telegram');
+    const { sendTelegramBackup, isConfigured } = require('../utils/telegram');
+    if (isConfigured) {
       telegramPromise = sendTelegramBackup(snapshot).catch(err => {
         console.error('[Cron] Telegram backup failed:', err.message);
       });
@@ -183,11 +183,11 @@ router.post('/telegram-backup', adminGuard, async (req, res) => {
       }
     };
 
-    if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
-      return res.status(400).json({ error: 'Telegram environment variables (TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID) are not configured.' });
+    const { sendTelegramBackup, isConfigured } = require('../utils/telegram');
+    if (!isConfigured) {
+      return res.status(400).json({ error: 'Telegram credentials are not configured.' });
     }
 
-    const { sendTelegramBackup } = require('../utils/telegram');
     await sendTelegramBackup(snapshot);
     res.json({ success: true, message: 'Backup sent to Telegram successfully.' });
   } catch (err) {
