@@ -6,6 +6,8 @@ env_variables:
   NODE_ENV: production
   EMAIL_USER: songdh418@gmail.com
   EMAIL_PASS: ubggrywvrykvyybl
+  TELEGRAM_BOT_TOKEN: "your_bot_token_here"
+  TELEGRAM_CHAT_ID: "your_chat_id_here"
 
 handlers:
   - url: /.*

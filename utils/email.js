@@ -171,7 +171,22 @@ function startEmailBackupScheduler() {
           const adminEmp = employers.find(e => e.isAdmin);
           const targetEmail = adminEmp?.email || EMAIL_USER;
 
-          await sendBackupEmail(targetEmail, snapshot);
+          // Send via email
+          try {
+            await sendBackupEmail(targetEmail, snapshot);
+          } catch (e) {
+            console.error('[Backup Scheduler] Email backup failed:', e.message);
+          }
+
+          // Send via Telegram
+          if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+            try {
+              const { sendTelegramBackup } = require('./telegram');
+              await sendTelegramBackup(snapshot);
+            } catch (e) {
+              console.error('[Backup Scheduler] Telegram backup failed:', e.message);
+            }
+          }
         }
       }
     } catch (err) {

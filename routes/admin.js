@@ -120,7 +120,7 @@ router.post('/email-backup', adminGuard, async (req, res) => {
 });
 
 // ── GET /api/admin/scheduled-email-backup ──────────────────────────────────
-router.get('/scheduled-email-backup', (req, res) => {
+router.get('/scheduled-email-backup', async (req, res) => {
   const isCron = req.headers['x-appengine-cron'] === 'true';
   const pin = req.headers['x-admin-pin'] || req.query?.adminPin;
   
@@ -146,18 +146,53 @@ router.get('/scheduled-email-backup', (req, res) => {
     const adminEmp = employers.find(e => e.isAdmin);
     const targetEmail = adminEmp?.email || process.env.EMAIL_USER || 'songdh418@gmail.com';
 
-    sendBackupEmail(targetEmail, snapshot)
-      .then(() => {
-        console.log(`[Cron] Scheduled backup email sent successfully to ${targetEmail}`);
-        res.json({ success: true, message: `Backup email sent to ${targetEmail}` });
-      })
-      .catch(err => {
-        console.error('[Cron] Email sending failed:', err);
-        res.status(500).json({ error: 'Email sending failed: ' + err.message });
+    // Send email backup
+    const emailPromise = sendBackupEmail(targetEmail, snapshot);
+
+    // Send Telegram backup if configured
+    let telegramPromise = Promise.resolve();
+    if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+      const { sendTelegramBackup } = require('../utils/telegram');
+      telegramPromise = sendTelegramBackup(snapshot).catch(err => {
+        console.error('[Cron] Telegram backup failed:', err.message);
       });
+    }
+
+    await Promise.all([emailPromise, telegramPromise]);
+    console.log('[Cron] Scheduled backups completed successfully.');
+    res.json({ success: true, message: 'Scheduled backups completed successfully.' });
   } catch (err) {
     console.error('[Cron Backup] Error:', err);
     res.status(500).json({ error: 'Scheduled backup failed: ' + err.message });
+  }
+});
+
+// ── POST /api/admin/telegram-backup ───────────────────────────────────────
+router.post('/telegram-backup', adminGuard, async (req, res) => {
+  try {
+    const snapshot = {
+      exportedAt: new Date().toISOString(),
+      version: 1,
+      data: {
+        employers:          readJSON('employers.json'),
+        drivers:            readJSON('drivers.json'),
+        attendance:         readJSON('attendance.json'),
+        payments:           readJSON('payments.json'),
+        schedules:          readJSON('schedules.json'),
+        paySettings:        getPaySettings(),
+      }
+    };
+
+    if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
+      return res.status(400).json({ error: 'Telegram environment variables (TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID) are not configured.' });
+    }
+
+    const { sendTelegramBackup } = require('../utils/telegram');
+    await sendTelegramBackup(snapshot);
+    res.json({ success: true, message: 'Backup sent to Telegram successfully.' });
+  } catch (err) {
+    console.error('[Admin Telegram Backup] Error:', err);
+    res.status(500).json({ error: 'Telegram backup failed: ' + err.message });
   }
 });
 

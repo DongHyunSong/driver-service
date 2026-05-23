@@ -798,6 +798,9 @@ function renderAdminPanel() {
           <button class="btn btn-secondary btn-block mt-sm" onclick="emailBackupData()">
             📧 Send Backup to Email
           </button>
+          <button class="btn btn-secondary btn-block mt-sm" onclick="telegramBackupData()">
+            💬 Send Backup to Telegram
+          </button>
         </div>
       </div>
 
@@ -963,6 +966,27 @@ async function emailBackupData() {
     showToast('Backup email sent successfully!', 'success');
   } catch (e) {
     showToast('Email backup error: ' + e.message, 'error');
+  }
+}
+
+async function telegramBackupData() {
+  try {
+    showToast('Sending backup to Telegram...', 'info');
+    const res = await fetch('/api/admin/telegram-backup', {
+      method: 'POST',
+      headers: {
+        'X-Admin-Pin': '0000',
+        'Content-Type': 'application/json'
+      }
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      showToast('Telegram backup failed: ' + result.error, 'error');
+      return;
+    }
+    showToast('Backup sent to Telegram successfully!', 'success');
+  } catch (e) {
+    showToast('Telegram backup error: ' + e.message, 'error');
   }
 }
 
