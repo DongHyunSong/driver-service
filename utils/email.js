@@ -1,12 +1,14 @@
 const nodemailer = require('nodemailer');
 
-// 환경변수를 사용하여 SMTP 트랜스포터 구성 (Gmail 권장)
-// GCP 환경에서 포트 465(보안) 또는 587을 사용합니다.
+const EMAIL_USER = process.env.EMAIL_USER || 'songdh418@gmail.com';
+const EMAIL_PASS = process.env.EMAIL_PASS || 'ubggrywvrykvyybl';
+
+// Configure SMTP transporter using environment variables or fallbacks
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // GCP에서 Gmail SMTP(Google Workspace) 사용이 일반적입니다
+  service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER || 'your-email@gmail.com',
-    pass: process.env.EMAIL_PASS || 'your-app-password'
+    user: EMAIL_USER,
+    pass: EMAIL_PASS
   }
 });
 
@@ -24,7 +26,7 @@ async function sendAttendanceEmail(employer, driver, record, action) {
   }
 
   // 이메일 설정이 되어있지 않으면 스킵 (개발 환경 테스트용)
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  if (!EMAIL_USER || !EMAIL_PASS) {
     console.log(`[Email] 환경변수(EMAIL_USER, EMAIL_PASS)가 설정되어 있지 않아 이메일 발송을 스킵합니다. (대상: ${employer.email})`);
     return;
   }
@@ -75,7 +77,7 @@ async function sendAttendanceEmail(employer, driver, record, action) {
   }
 
   const mailOptions = {
-    from: `"Driver Payment System" <${process.env.EMAIL_USER || 'no-reply@driverpayment.com'}>`,
+    from: `"Driver Payment System" <${EMAIL_USER}>`,
     to: employer.email,
     subject: subject,
     html: content
@@ -95,7 +97,7 @@ async function sendAttendanceEmail(employer, driver, record, action) {
  * @returns {Promise<Object>} - Nodemailer send result
  */
 async function sendBackupEmail(toEmail, snapshot) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  if (!EMAIL_USER || !EMAIL_PASS) {
     throw new Error('EMAIL_USER or EMAIL_PASS environment variables are not configured.');
   }
 
@@ -103,7 +105,7 @@ async function sendBackupEmail(toEmail, snapshot) {
   const filename = `driver-attendance-backup-${todayStr}.json`;
 
   const mailOptions = {
-    from: `"Driver Payment System" <${process.env.EMAIL_USER}>`,
+    from: `"Driver Payment System" <${EMAIL_USER}>`,
     to: toEmail,
     subject: `[Driver Payment] Data Backup - ${todayStr}`,
     html: `
