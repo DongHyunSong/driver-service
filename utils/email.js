@@ -88,5 +88,43 @@ async function sendAttendanceEmail(employer, driver, record, action) {
     console.error('[Email] 메일 발송 실패:', error);
   }
 }
+/**
+ * Send backup snapshot file via email.
+ * @param {String} toEmail - Recipient email address
+ * @param {Object} snapshot - The full backup JSON snapshot object
+ * @returns {Promise<Object>} - Nodemailer send result
+ */
+async function sendBackupEmail(toEmail, snapshot) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error('EMAIL_USER or EMAIL_PASS environment variables are not configured.');
+  }
 
-module.exports = { sendAttendanceEmail };
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const filename = `driver-attendance-backup-${todayStr}.json`;
+
+  const mailOptions = {
+    from: `"Driver Payment System" <${process.env.EMAIL_USER}>`,
+    to: toEmail,
+    subject: `[Driver Payment] Data Backup - ${todayStr}`,
+    html: `
+      <h3>Data Backup File</h3>
+      <p>Please find attached the latest backup JSON file for the Driver Payment system.</p>
+      <p><strong>Exported At:</strong> ${snapshot.exportedAt}</p>
+      <hr>
+      <p>This email was sent automatically from the Driver Payment System.</p>
+    `,
+    attachments: [
+      {
+        filename: filename,
+        content: JSON.stringify(snapshot, null, 2),
+        contentType: 'application/json'
+      }
+    ]
+  };
+
+  const info = await transporter.sendMail(mailOptions);
+  console.log(`[Email] Backup email sent successfully: ${info.messageId}`);
+  return info;
+}
+
+module.exports = { sendAttendanceEmail, sendBackupEmail };

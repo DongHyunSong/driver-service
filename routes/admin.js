@@ -8,6 +8,7 @@ const express  = require('express');
 const router   = express.Router();
 const multer   = require('multer');
 const { readJSON, writeJSON, getPaySettings, savePaySettings } = require('../utils/dataStore');
+const { sendBackupEmail } = require('../utils/email');
 
 // Use memory storage so we can parse the uploaded file without writing to disk
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -87,6 +88,34 @@ router.post('/import', upload.single('backup'), adminGuard, (req, res) => {
   } catch (err) {
     console.error('[Admin Import] Error:', err);
     res.status(500).json({ error: 'Import failed: ' + err.message });
+  }
+});
+
+// ── POST /api/admin/email-backup ──────────────────────────────────────────
+router.post('/email-backup', adminGuard, async (req, res) => {
+  try {
+    const snapshot = {
+      exportedAt: new Date().toISOString(),
+      version: 1,
+      data: {
+        employers:          readJSON('employers.json'),
+        drivers:            readJSON('drivers.json'),
+        attendance:         readJSON('attendance.json'),
+        payments:           readJSON('payments.json'),
+        schedules:          readJSON('schedules.json'),
+        paySettings:        getPaySettings(),
+      }
+    };
+
+    const employers = readJSON('employers.json');
+    const adminEmp = employers.find(e => e.isAdmin);
+    const targetEmail = adminEmp?.email || process.env.EMAIL_USER || 'songdh418@gmail.com';
+
+    await sendBackupEmail(targetEmail, snapshot);
+    res.json({ success: true, message: `Backup email sent to ${targetEmail}` });
+  } catch (err) {
+    console.error('[Admin Email Backup] Error:', err);
+    res.status(500).json({ error: 'Email backup failed: ' + err.message });
   }
 });
 

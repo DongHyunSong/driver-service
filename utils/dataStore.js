@@ -78,15 +78,7 @@ async function initGCS() {
   }
 }
 
-/**
- * Scheduled backup helper to start interval task
- */
-function startPeriodicBackup() {
-  if (bucket) {
-    console.log('[GCS] Scheduling periodic GCS backups (6-hour interval)');
-    setInterval(exportToCloudAll, 6 * 60 * 60 * 1000);
-  }
-}
+
 
 /**
  * Sync latest data files from GCS bucket at server startup
@@ -114,8 +106,7 @@ async function syncFromCloud() {
         console.log(`[GCS] ${file} does not exist in bucket (first run).`);
       }
     }
-    // Only schedule periodic backups if startup sync succeeded
-    startPeriodicBackup();
+
   } catch (err) {
     console.error(`[GCS] Failed to sync data from GCS bucket:`, err.message);
     console.error(`[GCS] Please ensure that the GCS bucket exists and the Cloud Run service account has 'Storage Object Admin' permissions.`);
@@ -124,37 +115,7 @@ async function syncFromCloud() {
   }
 }
 
-/**
- * Periodic backup function to save current cache to GCS
- */
-async function exportToCloudAll() {
-  if (!bucket) return;
-  console.log('[GCS] Starting periodic data backup (6-hour interval)...');
-  const files = ['employers.json', 'drivers.json', 'attendance.json', 'payments.json', 'pay-settings.json', 'schedules.json', 'push_subscriptions.json'];
-  for (const file of files) {
-    let raw = stringCache[file];
-    if (!raw) {
-      const isConfig = file === 'pay-settings.json';
-      const dir = isConfig ? CONFIG_DIR : DATA_DIR;
-      const filePath = path.join(dir, file);
-      if (fs.existsSync(filePath)) {
-        try {
-          raw = fs.readFileSync(filePath, 'utf-8');
-          stringCache[file] = raw;
-        } catch (e) {}
-      }
-    }
-    
-    if (raw) {
-      try {
-        await bucket.file(file).save(raw);
-        console.log(`[GCS] ${file} periodic backup completed.`);
-      } catch (err) {
-        console.error(`[GCS] ${file} periodic backup failed:`, err.message);
-      }
-    }
-  }
-}
+
 
 /**
  * JSON 파일 읽기

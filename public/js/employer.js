@@ -795,6 +795,9 @@ function renderAdminPanel() {
           <button class="btn btn-primary btn-block" onclick="exportAllData()">
             ⬇️ Download Backup (.json)
           </button>
+          <button class="btn btn-secondary btn-block mt-sm" onclick="emailBackupData()">
+            📧 Send Backup to Email
+          </button>
         </div>
       </div>
 
@@ -939,6 +942,27 @@ async function exportAllData() {
     showToast('Backup downloaded successfully!', 'success');
   } catch (e) {
     showToast('Export error: ' + e.message, 'error');
+  }
+}
+
+async function emailBackupData() {
+  try {
+    showToast('Sending backup email...', 'info');
+    const res = await fetch('/api/admin/email-backup', {
+      method: 'POST',
+      headers: {
+        'X-Admin-Pin': '0000',
+        'Content-Type': 'application/json'
+      }
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      showToast('Email backup failed: ' + result.error, 'error');
+      return;
+    }
+    showToast('Backup email sent successfully!', 'success');
+  } catch (e) {
+    showToast('Email backup error: ' + e.message, 'error');
   }
 }
 
