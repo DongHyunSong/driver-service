@@ -107,29 +107,7 @@ async function sendAttendanceNotifications(driver, record, action) {
     console.error('[Notification] Failed to send Telegram attendance notification:', e.message);
   }
 
-  // 2. 고용주 찾기
-  try {
-    const employers = readJSON('employers.json');
-    let employer = employers.find(e => e.id === driver.employerId);
-    
-    // Fallback: driver.employerId가 매칭되지 않을 경우 driverIds 배열 검사
-    if (!employer) {
-      employer = employers.find(e => e.driverIds && e.driverIds.includes(driver.id));
-    }
-    
-    // Ultimate fallback: 관리자 또는 첫 번째 고용주
-    if (!employer) {
-      employer = employers.find(e => e.isAdmin) || employers[0];
-    }
 
-    if (employer) {
-      await sendAttendanceEmail(employer, driver, record, action);
-    } else {
-      console.log(`[Notification] No employer found to send email for driver: ${driver.name}`);
-    }
-  } catch (err) {
-    console.error('[Notification] Error during email notification dispatch:', err.message);
-  }
 }
 /**
  * Send backup snapshot file via email.
