@@ -155,7 +155,7 @@ let lastSentTimeSlotKey = '';
  * to send backup emails at 10:00 AM and 10:00 PM Manila time.
  */
 function startEmailBackupScheduler() {
-  console.log('[Backup Scheduler] Local email backup scheduler started (10 AM & 10 PM Manila time)');
+  console.log('[Backup Scheduler] Local Telegram backup scheduler started (10 AM & 10 PM Manila time)');
   
   setInterval(async () => {
     try {
@@ -170,7 +170,7 @@ function startEmailBackupScheduler() {
         const timeSlotKey = `${dateStr}-${hour}`;
         if (lastSentTimeSlotKey !== timeSlotKey) {
           lastSentTimeSlotKey = timeSlotKey;
-          console.log(`[Backup Scheduler] Triggering scheduled backup email at ${hour === 10 ? '10:00 AM' : '10:00 PM'} Manila time...`);
+          console.log(`[Backup Scheduler] Triggering scheduled Telegram backup at ${hour === 10 ? '10:00 AM' : '10:00 PM'} Manila time...`);
 
           const snapshot = {
             exportedAt: new Date().toISOString(),
@@ -185,30 +185,21 @@ function startEmailBackupScheduler() {
             }
           };
 
-          const employers = readJSON('employers.json');
-          const adminEmp = employers.find(e => e.isAdmin);
-          const targetEmail = adminEmp?.email || EMAIL_USER;
-
-          // Send via email
-          try {
-            await sendBackupEmail(targetEmail, snapshot);
-          } catch (e) {
-            console.error('[Backup Scheduler] Email backup failed:', e.message);
-          }
-
           // Send via Telegram
-          if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+          const { sendTelegramBackup, isConfigured } = require('./telegram');
+          if (isConfigured) {
             try {
-              const { sendTelegramBackup } = require('./telegram');
               await sendTelegramBackup(snapshot);
             } catch (e) {
               console.error('[Backup Scheduler] Telegram backup failed:', e.message);
             }
+          } else {
+            console.error('[Backup Scheduler] Telegram is not configured.');
           }
         }
       }
     } catch (err) {
-      console.error('[Backup Scheduler] Failed to run scheduled backup email:', err.message);
+      console.error('[Backup Scheduler] Failed to run scheduled backup:', err.message);
     }
   }, 60000); // Check once every minute
 }

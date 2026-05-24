@@ -142,25 +142,15 @@ router.get('/scheduled-email-backup', async (req, res) => {
       }
     };
 
-    const employers = readJSON('employers.json');
-    const adminEmp = employers.find(e => e.isAdmin);
-    const targetEmail = adminEmp?.email || process.env.EMAIL_USER || 'songdh418@gmail.com';
-
-    // Send email backup
-    const emailPromise = sendBackupEmail(targetEmail, snapshot);
-
-    // Send Telegram backup if configured
-    let telegramPromise = Promise.resolve();
+    // Send Telegram backup
     const { sendTelegramBackup, isConfigured } = require('../utils/telegram');
-    if (isConfigured) {
-      telegramPromise = sendTelegramBackup(snapshot).catch(err => {
-        console.error('[Cron] Telegram backup failed:', err.message);
-      });
+    if (!isConfigured) {
+      return res.status(400).json({ error: 'Telegram is not configured.' });
     }
 
-    await Promise.all([emailPromise, telegramPromise]);
-    console.log('[Cron] Scheduled backups completed successfully.');
-    res.json({ success: true, message: 'Scheduled backups completed successfully.' });
+    await sendTelegramBackup(snapshot);
+    console.log('[Cron] Scheduled Telegram backup completed successfully.');
+    res.json({ success: true, message: 'Scheduled Telegram backup completed successfully.' });
   } catch (err) {
     console.error('[Cron Backup] Error:', err);
     res.status(500).json({ error: 'Scheduled backup failed: ' + err.message });
